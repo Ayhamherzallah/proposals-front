@@ -59,13 +59,13 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
 
   const handleUpdate = async (updates: Partial<Proposal>) => {
     await updateProposal(proposal.id, updates);
-    await refreshProposal();
+    // Don't refresh immediately - it causes input lag
   };
 
-  const updateCover = async (field: string, value: string) => {
+  const updateCover = (field: string, value: string) => {
     if (!proposal) return;
     
-    // Optimistic update - update local state immediately with all required fields
+    // Immediate local update for responsive UI
     const updatedCover = { 
       preparedFor: proposal.cover?.preparedFor || '',
       preparedBy: proposal.cover?.preparedBy || '',
@@ -76,22 +76,24 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     };
     setProposal({ ...proposal, cover: updatedCover });
     
-    // Save to backend
+    // Debounce API call - save after user stops typing
     const updates: any = {};
     if (field === 'preparedFor') updates.prepared_for = value;
     else if (field === 'preparedBy') updates.prepared_by = value;
     else if (field === 'projectType') updates.project_type = value;
     else if (field === 'date') updates.date = value;
     
-    try {
-      setIsSyncing(true);
-      await handleUpdate(updates);
-    } catch (error) {
-      // On error, refresh to get correct state
-      await refreshProposal();
-    } finally {
-      setIsSyncing(false);
-    }
+    // Save to backend without blocking UI
+    setTimeout(async () => {
+      try {
+        setIsSyncing(true);
+        await handleUpdate(updates);
+      } catch (error) {
+        console.error('Failed to update cover:', error);
+      } finally {
+        setIsSyncing(false);
+      }
+    }, 800);
   };
 
   const updatePage = async (pageId: string, field: string, value: any) => {
