@@ -15,6 +15,7 @@ export function AIRequirementsGenerator({ onGenerate }: AIRequirementsGeneratorP
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [showHTMLEditor, setShowHTMLEditor] = useState(false);
 
   const generateRequirements = async () => {
     if (!projectDescription.trim()) return;
@@ -45,7 +46,7 @@ IMPORTANT FORMATTING RULES:
 - Make it VERY detailed with at least 8-12 specific requirements per section
 - Be specific, actionable, and professional
 - DO NOT include Timeline or Technical Requirements sections
-- Focus on: Project Overview, Functional Requirements, Design Requirements, and Deliverables`
+- Focus on: Project Overview, Functional Requirements,and Deliverables`
             },
             {
               role: 'user',
@@ -228,14 +229,33 @@ Make each section VERY detailed with specific, actionable requirements. Use prof
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-gray-900">Generated Requirements - Review & Edit</h3>
-                    <span className="text-sm text-gray-500">{generatedContent.length} characters</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowHTMLEditor(!showHTMLEditor)}
+                        className="px-3 py-1.5 text-sm border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                      >
+                        <Edit2 size={14} />
+                        {showHTMLEditor ? 'Show Preview' : 'Edit HTML'}
+                      </button>
+                      <span className="text-sm text-gray-500">{generatedContent.length} characters</span>
+                    </div>
                   </div>
-                  <textarea
-                    value={generatedContent}
-                    onChange={(e) => setGeneratedContent(e.target.value)}
-                    className="w-full h-[500px] px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500">You can edit the generated content before applying it to your proposal.</p>
+                  
+                  {showHTMLEditor ? (
+                    <div>
+                      <textarea
+                        value={generatedContent}
+                        onChange={(e) => setGeneratedContent(e.target.value)}
+                        className="w-full h-[500px] px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-2">Editing HTML source code</p>
+                    </div>
+                  ) : (
+                    <div 
+                      className="w-full h-[500px] px-6 py-4 border-2 border-gray-200 rounded-lg overflow-y-auto bg-white prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: generatedContent }}
+                    />
+                  )}
                 </div>
               )}
             </div>
