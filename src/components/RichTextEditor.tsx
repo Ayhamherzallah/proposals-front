@@ -41,6 +41,7 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
           levels: [1, 2, 3],
         },
       }),
+      Underline, // Add underline support
       Table.configure({
         resizable: true,
         HTMLAttributes: {
@@ -52,7 +53,6 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
       TableCell,
       TextStyle,
       Color,
-      Underline,
       Highlight.configure({
         multicolor: true,
       }),

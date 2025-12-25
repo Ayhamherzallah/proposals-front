@@ -57,16 +57,25 @@ Format the output in clean HTML with proper structure.`
       });
 
       const data = await response.json();
-      const generatedContent = data.choices[0]?.message?.content || '';
+      
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to generate requirements');
+      }
+      
+      const generatedContent = data.choices?.[0]?.message?.content || '';
+      
+      if (!generatedContent) {
+        throw new Error('No content generated');
+      }
       
       onGenerate(generatedContent);
       setIsOpen(false);
       setProjectDescription('');
       setProjectType('');
       setAdditionalInfo('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate requirements:', error);
-      alert('Failed to generate requirements. Please try again.');
+      alert(error.message || 'Failed to generate requirements. Please check your API key in environment variables and try again.');
     } finally {
       setIsGenerating(false);
     }
