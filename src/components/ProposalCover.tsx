@@ -27,19 +27,19 @@ export function ProposalCover({ proposal }: { proposal: Proposal }) {
           <div className="grid grid-cols-2 gap-12 mb-8">
             <div>
               <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-2">Prepared For:</p>
-              <p className="text-gray-900 text-2xl font-bold">{proposal.cover.preparedFor || 'Client Name'}</p>
+              <p className="text-gray-900 text-2xl font-bold">{proposal.cover?.preparedFor || 'Client Name'}</p>
             </div>
 
             <div>
               <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-2">Prepared By:</p>
-              <p className="text-gray-900 text-xl font-semibold">{proposal.cover.preparedBy || 'Clicks Digitals'}</p>
+              <p className="text-gray-900 text-xl font-semibold">{proposal.cover?.preparedBy || 'Clicks Digitals'}</p>
             </div>
           </div>
 
           {/* Project Type - Full Width */}
           <div>
             <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-2">Project type:</p>
-            <p className="text-gray-900 text-xl font-semibold">{proposal.cover.projectType || 'Development'}</p>
+            <p className="text-gray-900 text-xl font-semibold">{proposal.cover?.projectType || 'Development'}</p>
           </div>
         </div>
 

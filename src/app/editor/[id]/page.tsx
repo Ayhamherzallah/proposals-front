@@ -65,8 +65,15 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
   const updateCover = async (field: string, value: string) => {
     if (!proposal) return;
     
-    // Optimistic update - update local state immediately
-    const updatedCover = { ...proposal.cover, [field]: value };
+    // Optimistic update - update local state immediately with all required fields
+    const updatedCover = { 
+      preparedFor: proposal.cover?.preparedFor || '',
+      preparedBy: proposal.cover?.preparedBy || '',
+      projectType: proposal.cover?.projectType || '',
+      date: proposal.cover?.date || '',
+      subHeading: proposal.cover?.subHeading,
+      [field]: value 
+    };
     setProposal({ ...proposal, cover: updatedCover });
     
     // Save to backend
