@@ -17,7 +17,7 @@ import {
   Undo, Redo, Palette, Highlighter, Type, Trash2, Plus, Minus,
   ChevronDown
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -42,6 +42,12 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
         },
       }),
       Underline, // Add underline support
+      TextStyle,
+      Color,
+      Highlight.configure({
+        multicolor: true,
+      }),
+      FontSize,
       Table.configure({
         resizable: true,
         HTMLAttributes: {
@@ -51,18 +57,19 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
       TableRow,
       TableHeader,
       TableCell,
-      TextStyle,
-      Color,
-      Highlight.configure({
-        multicolor: true,
-      }),
-      FontSize,
     ],
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
   }, [editorKey]);
+
+  // Update editor content when prop changes
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
 
   if (!editor) {
     return null;

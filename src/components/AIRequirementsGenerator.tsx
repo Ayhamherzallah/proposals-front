@@ -1,30 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Loader2, X, Edit2, Check } from 'lucide-react';
+import { Sparkles, Loader2, RotateCcw, X } from 'lucide-react';
 
 interface AIRequirementsGeneratorProps {
   onGenerate: (requirements: string) => void;
+  currentContent?: string;
 }
 
-export function AIRequirementsGenerator({ onGenerate }: AIRequirementsGeneratorProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function AIRequirementsGenerator({ onGenerate, currentContent }: AIRequirementsGeneratorProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [projectDescription, setProjectDescription] = useState('');
   const [projectType, setProjectType] = useState('');
-  const [additionalInfo, setAdditionalInfo] = useState('');
-  const [generatedContent, setGeneratedContent] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [showHTMLEditor, setShowHTMLEditor] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [hasGenerated, setHasGenerated] = useState(false);
 
   const generateRequirements = async () => {
-    if (!projectDescription.trim()) return;
+    if (!projectDescription.trim()) {
+      alert('Please enter a project description');
+      return;
+    }
 
     setIsGenerating(true);
     try {
-      console.log('Starting AI generation...');
-      console.log('API Key exists:', !!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
-      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -32,276 +31,233 @@ export function AIRequirementsGenerator({ onGenerate }: AIRequirementsGeneratorP
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Better quality, still affordable
+          model: 'gpt-5.2-chat-latest',
           messages: [
             {
               role: 'system',
-              content: `You are an expert requirements analyst for both DEVELOPMENT and DESIGN projects. Generate professional, detailed requirements in HTML format.
+              content: `You are a senior business analyst specializing in project requirements.
 
-FORMATTING RULES:
-- Use <h2> for main sections
-- Use <h3> for subsections  
-- Use <ul> and <li> for lists
-- Use <p> for paragraphs
-- Use <strong> for emphasis
-- NO personas or user stories
-- Focus on FEATURES and REQUIREMENTS
-- Adapt based on project type (development vs design)`
+You handle TWO types of projects:
+
+**IT SOLUTIONS** (websites, mobile apps, web systems, software):
+- Generate functional and technical requirements
+- Focus on features, user flows, and system capabilities
+
+**DESIGN SOLUTIONS** (branding, packaging, UI/UX, social media, graphics):
+- Generate design specifications and creative requirements
+- Focus on visual deliverables, brand guidelines, and design assets
+
+Use professional, clear language. No fluff or marketing speak.
+
+Output in clean HTML:
+- <h2> for main sections
+- <h3> for subsections
+- <ul><li> for lists
+- <p> for paragraphs
+
+NO markdown. Start with <h2>.`
             },
             {
               role: 'user',
-              content: `Generate detailed professional requirements for:
+              content: `${currentContent && feedback ? `Current requirements:
+${currentContent}
 
-Project Type: ${projectType || 'Digital Project'}
-Description: ${projectDescription}
-${additionalInfo ? `Additional: ${additionalInfo}` : ''}
+User feedback: ${feedback}
 
-Sections:
+Refine and improve based on this feedback.
 
-<h2>Project Overview</h2>
-- Brief context and goals
-- Success criteria
+` : ''}Generate comprehensive, detailed professional project requirements:
 
-<h2>Core Features & Requirements</h2>
-- 12-15 specific, detailed features/requirements
-- Focus on WHAT needs to be built/designed
-- Be extremely specific and actionable
+**Project Type:** ${projectType || 'Not specified'}
 
-<h2>Design Requirements</h2>
-- Visual specifications
-- UI/UX requirements
-- Branding and style
-- Responsive design
+**Project Description:**
+${projectDescription}
 
-<h2>Deliverables</h2>
-- Specific outputs
-- File formats
-- Documentation
+Your task:
+Generate EXTREMELY detailed and comprehensive project requirements suitable for a professional proposal. 
 
-Format in clean HTML. Be professional and detailed.`
+Be creative and adapt the structure based on the project type. Include everything relevant:
+- Project context and objectives
+- All features, functionalities, or design elements (be very detailed - minimum 20-30 items)
+- User roles and permissions (if applicable)
+- Admin/management capabilities (if applicable)
+- Technical or design specifications
+- Deliverables and outputs
+
+Important guidelines:
+- Write naturally, not like a template
+- Be VERY detailed and specific (aim for 2000-3000+ words)
+- Each feature/requirement should have proper explanation
+- Adapt sections based on whether it's IT (website/app) or Design (branding/graphics)
+- Use professional language
+- NO pricing, timelines, or assumptions
+- Format in clean HTML with <h2>, <h3>, <ul>, <li>, <p> tags
+- Start with <h2>Project Overview</h2>
+
+Generate comprehensive, detailed requirements that feel natural and specific to THIS project.`
             }
           ],
-          temperature: 0.7,
-          max_tokens: 4000,
+          max_completion_tokens: 30000,
         }),
       });
 
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Response data:', data);
       
       if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to generate requirements');
+        throw new Error(data.error?.message || 'Failed to generate');
       }
       
-      const content = data.choices?.[0]?.message?.content || '';
-      console.log('Generated content length:', content.length);
+      let content = data.choices?.[0]?.message?.content || '';
       
-      if (!content) {
-        throw new Error('No content generated');
-      }
+      // Clean markdown code blocks
+      content = content.trim();
+      content = content.replace(/^```html\n?/, '');
+      content = content.replace(/^```\n?/, '');
+      content = content.replace(/\n?```$/, '');
+      content = content.trim();
       
-      setGeneratedContent(content);
-      setIsEditing(true); // Show preview for editing
+      // Apply directly to editor
+      onGenerate(content);
+      
+      // Collapse the form
+      setHasGenerated(true);
+      setFeedback('');
       
     } catch (error: any) {
-      console.error('Failed to generate requirements:', error);
-      alert(error.message || 'Failed to generate requirements. Please check your API key and try again.');
+      console.error('Generation failed:', error);
+      alert(error.message || 'Failed to generate. Check your API key.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleApply = () => {
-    onGenerate(generatedContent);
-    setIsOpen(false);
-    setProjectDescription('');
-    setProjectType('');
-    setAdditionalInfo('');
-    setGeneratedContent('');
-    setIsEditing(false);
-  };
-
-  const handleClose = () => {
-    setIsOpen(false);
-    setGeneratedContent('');
-    setIsEditing(false);
-  };
+  if (!isExpanded) {
+    return (
+      <button
+        onClick={() => setIsExpanded(true)}
+        className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#252E5D] to-[#0230F5] text-white rounded-lg hover:from-[#1a2347] hover:to-[#0226d9] transition-all shadow-md hover:shadow-lg font-medium text-sm"
+      >
+        <Sparkles size={16} />
+        <span>Generate with AI</span>
+      </button>
+    );
+  }
 
   return (
-    <>
-      {/* Trigger Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
-      >
-        <Sparkles size={18} />
-        <span className="font-medium">Generate with AI</span>
-      </button>
-
-      {/* Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Sparkles size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">AI Requirements Generator</h2>
-                    <p className="text-purple-100 text-sm">Powered by ChatGPT 3.5</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleClose}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {!isEditing ? (
-                <div className="space-y-6">
-                  {/* Project Type */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Project Type
-                    </label>
-                    <input
-                      type="text"
-                      value={projectType}
-                      onChange={(e) => setProjectType(e.target.value)}
-                      placeholder="e.g., E-commerce Website, Mobile App, SaaS Platform..."
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all"
-                    />
-                  </div>
-
-                  {/* Project Description */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Project Description *
-                    </label>
-                    <textarea
-                      value={projectDescription}
-                      onChange={(e) => setProjectDescription(e.target.value)}
-                      placeholder="Describe your project in detail... What are you building? Who is it for? What problems does it solve? What are the main features?"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all resize-none"
-                      rows={8}
-                    />
-                  </div>
-
-                  {/* Additional Information */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Additional Information (Optional)
-                    </label>
-                    <textarea
-                      value={additionalInfo}
-                      onChange={(e) => setAdditionalInfo(e.target.value)}
-                      placeholder="Any specific features, user types, integrations, or constraints you want to mention?"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all resize-none"
-                      rows={5}
-                    />
-                  </div>
-
-                  {/* Info Box */}
-                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-700">
-                      <strong className="text-purple-700">💡 Tip:</strong> The more details you provide, the better and more comprehensive the generated requirements will be! Include target audience, key features, and specific goals.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-gray-900">Generated Requirements - Review & Edit</h3>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setShowHTMLEditor(!showHTMLEditor)}
-                        className="px-3 py-1.5 text-sm border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-                      >
-                        <Edit2 size={14} />
-                        {showHTMLEditor ? 'Show Preview' : 'Edit HTML'}
-                      </button>
-                      <span className="text-sm text-gray-500">{generatedContent.length} characters</span>
-                    </div>
-                  </div>
-                  
-                  {showHTMLEditor ? (
-                    <div>
-                      <textarea
-                        value={generatedContent}
-                        onChange={(e) => setGeneratedContent(e.target.value)}
-                        className="w-full h-[500px] px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all font-mono text-sm"
-                      />
-                      <p className="text-xs text-gray-500 mt-2">Editing HTML source code</p>
-                    </div>
-                  ) : (
-                    <div 
-                      className="w-full h-[500px] px-6 py-4 border-2 border-gray-200 rounded-lg overflow-y-auto bg-white prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: generatedContent }}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t border-gray-200 flex gap-3 flex-shrink-0">
-              <button
-                onClick={handleClose}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              {!isEditing ? (
-                <button
-                  onClick={generateRequirements}
-                  disabled={!projectDescription.trim() || isGenerating}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={20} />
-                      Generate Requirements
-                    </>
-                  )}
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setGeneratedContent('');
-                    }}
-                    className="px-6 py-3 border-2 border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors font-medium"
-                  >
-                    Regenerate
-                  </button>
-                  <button
-                    onClick={handleApply}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium flex items-center justify-center gap-2"
-                  >
-                    <Check size={20} />
-                    Apply to Proposal
-                  </button>
-                </>
-              )}
-            </div>
+    <div className="mb-6 border-2 border-[#0230F5]/20 rounded-xl bg-white shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#252E5D] to-[#0230F5] px-5 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-white/20 rounded-lg">
+            <Sparkles size={18} className="text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-sm">AI Requirements Generator</h3>
+            <p className="text-blue-100 text-xs">Powered by GPT-4o</p>
           </div>
         </div>
-      )}
-    </>
+        <button
+          onClick={() => setIsExpanded(false)}
+          className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+        >
+          <X size={18} className="text-white" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-5 space-y-4">
+        {/* Project Type */}
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
+            Project Type
+          </label>
+          <input
+            type="text"
+            value={projectType}
+            onChange={(e) => setProjectType(e.target.value)}
+            placeholder="e.g., Website, Mobile App, Branding, UI/UX Design, Packaging..."
+            className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#0230F5] focus:ring-2 focus:ring-[#0230F5]/20 outline-none transition-all text-sm"
+          />
+        </div>
+
+        {/* Project Description */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">
+              Project Description <span className="text-red-500">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setProjectDescription(`Describe your project requirements:\n\n- Main objectives and goals\n- Key features or deliverables needed\n- Target users or audience (if applicable)\n- Any specific requirements or constraints\n- Desired outcomes`)}
+              className="text-xs text-[#0230F5] hover:underline font-medium"
+            >
+              Use Template
+            </button>
+          </div>
+          <textarea
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            placeholder="Describe your project in detail... What are you building? Who is it for? What are the main features?"
+            className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#0230F5] focus:ring-2 focus:ring-[#0230F5]/20 outline-none transition-all resize-none text-sm"
+            rows={5}
+          />
+        </div>
+
+        {/* Feedback (shown after first generation) */}
+        {hasGenerated && (
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
+              Improvements / Changes <span className="text-gray-400">(Optional)</span>
+            </label>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="What would you like to improve, add, or change? e.g., 'Add more payment options', 'Include social media integration', 'Focus more on design specifications'"
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#0230F5] focus:ring-2 focus:ring-[#0230F5]/20 outline-none transition-all resize-none text-sm"
+              rows={3}
+            />
+          </div>
+        )}
+
+        {/* Info Box */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+          <p className="text-xs text-gray-700">
+            <strong className="text-[#0230F5]">💡 Tip:</strong> {hasGenerated ? 'Add specific feedback to improve the requirements. The AI will refine based on your input.' : 'The more details you provide, the better the AI-generated requirements will be.'}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={generateRequirements}
+            disabled={!projectDescription.trim() || isGenerating}
+            className="flex-1 px-5 py-2.5 bg-gradient-to-r from-[#252E5D] to-[#0230F5] text-white rounded-lg hover:from-[#1a2347] hover:to-[#0226d9] transition-all font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Generating...
+              </>
+            ) : hasGenerated ? (
+              <>
+                <RotateCcw size={16} />
+                Regenerate with Feedback
+              </>
+            ) : (
+              <>
+                <Sparkles size={16} />
+                Generate Requirements
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setIsExpanded(false)}
+            className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

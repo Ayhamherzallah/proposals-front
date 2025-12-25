@@ -100,11 +100,15 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
   const updatePage = async (pageId: string, field: string, value: any) => {
     if (!proposal) return;
     
+    console.log('[updatePage] Called with:', { pageId, field, valueLength: value?.length });
+    
     // Optimistic update - update local state immediately
     const updatedPages = proposal.pages.map(p =>
       p.id === pageId ? { ...p, [field]: value } : p
     );
     setProposal({ ...proposal, pages: updatedPages });
+    
+    console.log('[updatePage] Local state updated');
     
     // Save to backend
     const updates: any = {};
@@ -513,6 +517,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
                           {(page.title.toLowerCase().includes('requirement') || page.type === 'requirements') && (
                             <AIRequirementsGenerator 
                               onGenerate={(content) => updatePage(page.id, 'content', content)}
+                              currentContent={page.content}
                             />
                           )}
                         </div>
