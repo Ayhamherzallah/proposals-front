@@ -19,14 +19,14 @@ export function AIRequirementsGenerator({ onGenerate }: AIRequirementsGeneratorP
 
     setIsGenerating(true);
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_GROQ_API_KEY}`,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'gpt-3.5-turbo', // Cost-effective model
           messages: [
             {
               role: 'system',
@@ -105,7 +105,7 @@ Format the output in clean HTML with proper structure.`
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold">AI Requirements Generator</h2>
-                    <p className="text-purple-100 text-sm">Powered by Llama 3.3 70B</p>
+                    <p className="text-purple-100 text-sm">Powered by ChatGPT 3.5</p>
                   </div>
                 </div>
                 <button
