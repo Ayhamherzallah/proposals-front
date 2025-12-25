@@ -11,6 +11,7 @@ import { RichTextEditor } from '@/components/RichTextEditor';
 import { ProcessEditor } from '@/components/ProcessEditor';
 import AddPageModal from '@/components/AddPageModal';
 import { SyncIndicator } from '@/components/SyncIndicator';
+import { AIRequirementsGenerator } from '@/components/AIRequirementsGenerator';
 
 export default function Editor({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -507,7 +508,14 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
                       </div>
 
                       <div className="flex-1 flex flex-col">
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-2">Content</label>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs font-bold text-gray-400 uppercase">Content</label>
+                          {(page.title.toLowerCase().includes('requirement') || page.type === 'requirements') && (
+                            <AIRequirementsGenerator 
+                              onGenerate={(content) => updatePage(page.id, 'content', content)}
+                            />
+                          )}
+                        </div>
                         {page.type === 'process' || page.title.toLowerCase().includes('process') ? (
                           <ProcessEditor
                             content={page.content}
