@@ -9,6 +9,9 @@ interface DynamicPageProps {
 }
 
 function PageHeader({ title }: { title: string }) {
+  // Detect if title contains Arabic characters
+  const isArabic = /[\u0600-\u06FF]/.test(title);
+  
   return (
     <div className="relative h-48 bg-gradient-to-r from-[#252E5D] to-[#0230F5] overflow-hidden flex-shrink-0">
       <div className="absolute top-0 right-0 h-full w-auto">
@@ -18,8 +21,8 @@ function PageHeader({ title }: { title: string }) {
           className="h-full w-auto object-cover opacity-40"
         />
       </div>
-      <div className="relative z-10 h-full flex flex-col justify-center px-10">
-        <h1 className="text-4xl font-bold text-white">{title}</h1>
+      <div className={`relative z-10 h-full flex flex-col justify-center px-10 ${isArabic ? 'text-right' : 'text-left'}`}>
+        <h1 className={`text-4xl font-bold text-white ${isArabic ? 'font-arabic' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>{title}</h1>
       </div>
     </div>
   );
@@ -68,7 +71,7 @@ export function DynamicPage({ page }: DynamicPageProps) {
       `;
       document.body.appendChild(tempDiv);
 
-      const maxHeight = 650; // Max content height in pixels (A4 - header - footer - padding)
+      const maxHeight = 500; // Max content height with bottom padding safe area
       const elements = Array.from(tempDiv.children);
       const chunks: string[] = [];
       let currentChunk: HTMLElement[] = [];
@@ -178,7 +181,7 @@ export function DynamicPage({ page }: DynamicPageProps) {
         >
           <PageHeader title={page.title} />
           
-          <div className="flex-1 px-10 py-8 min-h-0 overflow-hidden">
+          <div className="flex-1 px-10 pt-8 pb-24 min-h-0 overflow-hidden">
             <div 
               ref={index === 0 ? measureRef : null}
               className={proseClasses}

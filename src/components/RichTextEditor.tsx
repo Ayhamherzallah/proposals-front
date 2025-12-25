@@ -10,12 +10,13 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
 import { FontSize } from '@/lib/tiptap-font-size';
 import { 
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, 
   Table as TableIcon, Heading1, Heading2, Heading3,
   Undo, Redo, Palette, Highlighter, Type, Trash2, Plus, Minus,
-  ChevronDown
+  ChevronDown, AlignLeft, AlignRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -41,13 +42,16 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
           levels: [1, 2, 3],
         },
       }),
-      Underline, // Add underline support
+      Underline,
       TextStyle,
       Color,
       Highlight.configure({
         multicolor: true,
       }),
       FontSize,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
       Table.configure({
         resizable: true,
         HTMLAttributes: {
@@ -252,6 +256,30 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
               title="Numbered List"
             >
               <ListOrdered size={18} />
+            </button>
+          </div>
+
+          {/* Text Direction (RTL/LTR) */}
+          <div className="flex gap-1.5 border-r-2 border-gray-200 pr-3">
+            <button
+              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              className={`p-2.5 rounded-xl hover:bg-gray-100 transition-all ${
+                editor.isActive({ textAlign: 'left' }) ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-700 hover:scale-105'
+              }`}
+              type="button"
+              title="Left to Right (LTR)"
+            >
+              <AlignLeft size={18} />
+            </button>
+            <button
+              onClick={() => editor.chain().focus().setTextAlign('right').run()}
+              className={`p-2.5 rounded-xl hover:bg-gray-100 transition-all ${
+                editor.isActive({ textAlign: 'right' }) ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-700 hover:scale-105'
+              }`}
+              type="button"
+              title="Right to Left (RTL)"
+            >
+              <AlignRight size={18} />
             </button>
           </div>
 
