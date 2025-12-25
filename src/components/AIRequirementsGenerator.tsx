@@ -32,65 +32,57 @@ export function AIRequirementsGenerator({ onGenerate }: AIRequirementsGeneratorP
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o-mini', // Better quality, still affordable
           messages: [
             {
               role: 'system',
-              content: `You are an expert project requirements analyst with 15+ years of experience. Generate extremely detailed, comprehensive, and professional project requirements in HTML format. 
+              content: `You are an expert requirements analyst for both DEVELOPMENT and DESIGN projects. Generate professional, detailed requirements in HTML format.
 
-IMPORTANT FORMATTING RULES:
-- Use <h2> for main sections (Project Overview, Functional Requirements, Design Requirements, Deliverables)
-- Use <h3> for subsections within each main section
-- Use <ul> and <li> for all lists
+FORMATTING RULES:
+- Use <h2> for main sections
+- Use <h3> for subsections  
+- Use <ul> and <li> for lists
 - Use <p> for paragraphs
-- Make it VERY detailed with at least 8-12 specific requirements per section
-- Be specific, actionable, and professional
-- DO NOT include Timeline or Technical Requirements sections
-- Focus on: Project Overview, Functional Requirements,and Deliverables`
+- Use <strong> for emphasis
+- NO personas or user stories
+- Focus on FEATURES and REQUIREMENTS
+- Adapt based on project type (development vs design)`
             },
             {
               role: 'user',
-              content: `Generate EXTREMELY DETAILED and COMPREHENSIVE project requirements for:
+              content: `Generate detailed professional requirements for:
 
-Project Type: ${projectType || 'General Project'}
-Project Description: ${projectDescription}
-${additionalInfo ? `Additional Context: ${additionalInfo}` : ''}
+Project Type: ${projectType || 'Digital Project'}
+Description: ${projectDescription}
+${additionalInfo ? `Additional: ${additionalInfo}` : ''}
 
-Generate requirements with these sections ONLY:
+Sections:
 
-1. PROJECT OVERVIEW
-   - Detailed project background and context
-   - Target audience and user personas
-   - Key objectives and success metrics
-   - Scope and boundaries
+<h2>Project Overview</h2>
+- Brief context and goals
+- Success criteria
 
-2. FUNCTIONAL REQUIREMENTS
-   - At least 10-15 specific, detailed functional requirements
-   - User stories and use cases
-   - Core features and capabilities
-   - User interactions and workflows
-   - Data management requirements
-   - Integration requirements
+<h2>Core Features & Requirements</h2>
+- 12-15 specific, detailed features/requirements
+- Focus on WHAT needs to be built/designed
+- Be extremely specific and actionable
 
-3. DESIGN REQUIREMENTS
-   - Visual design specifications
-   - Branding and style guidelines
-   - User interface requirements
-   - User experience considerations
-   - Accessibility requirements
-   - Responsive design needs
+<h2>Design Requirements</h2>
+- Visual specifications
+- UI/UX requirements
+- Branding and style
+- Responsive design
 
-4. DELIVERABLES
-   - Specific deliverables and outputs
-   - Documentation requirements
-   - Training and support materials
-   - Quality assurance criteria
+<h2>Deliverables</h2>
+- Specific outputs
+- File formats
+- Documentation
 
-Make each section VERY detailed with specific, actionable requirements. Use professional language and be comprehensive. Format everything in clean HTML.`
+Format in clean HTML. Be professional and detailed.`
             }
           ],
-          temperature: 0.8,
-          max_tokens: 3000, // Increased for longer output
+          temperature: 0.7,
+          max_tokens: 4000,
         }),
       });
 
