@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { useProposals } from '@/lib/store-api';
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/lib/protected-route';
-import { Plus, FileText, Trash2, Calendar, User, ArrowRight, Eye, Edit3, LogOut } from 'lucide-react';
+import { Plus, FileText, Trash2, Calendar, User, ArrowRight, Eye, Edit3, LogOut, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
-  const { proposals, loading, createProposal, deleteProposal } = useProposals();
+  const { proposals, loading, createProposal, deleteProposal, duplicateProposal } = useProposals();
   const { user, logout } = useAuth();
   const router = useRouter();
 
@@ -18,6 +18,17 @@ export default function Dashboard() {
       router.push(`/editor/${id}`);
     } catch (error) {
       console.error('Failed to create proposal:', error);
+    }
+  };
+
+  const handleDuplicate = async (proposalId: string) => {
+    try {
+      const newProposal = await duplicateProposal(proposalId);
+      if (newProposal) {
+        router.push(`/editor/${newProposal.id}`);
+      }
+    } catch (error) {
+      console.error('Failed to duplicate proposal:', error);
     }
   };
 
@@ -136,13 +147,22 @@ export default function Dashboard() {
                     <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 group-hover:from-blue-100 group-hover:to-indigo-100 transition-colors">
                       <FileText className="text-blue-600" size={24} />
                     </div>
-                    <button 
-                      onClick={(e) => { e.preventDefault(); deleteProposal(proposal.id); }}
-                      className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                      title="Delete proposal"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => { e.preventDefault(); handleDuplicate(proposal.id); }}
+                        className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
+                        title="Duplicate proposal"
+                      >
+                        <Copy size={18} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.preventDefault(); deleteProposal(proposal.id); }}
+                        className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
+                        title="Delete proposal"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                   
                   <Link href={`/editor/${proposal.id}`} className="block mb-6">

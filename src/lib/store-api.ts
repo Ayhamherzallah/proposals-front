@@ -156,6 +156,18 @@ export function useProposals() {
     }
   };
 
+  const duplicateProposal = async (id: string) => {
+    try {
+      const newProposal = await proposalApi.duplicate(id);
+      await loadProposals();
+      return newProposal;
+    } catch (err: any) {
+      console.error('[Store] Failed to duplicate proposal:', err);
+      setError(err.message || 'Failed to duplicate proposal');
+      throw err;
+    }
+  };
+
   const getProposal = async (id: string): Promise<Proposal | undefined> => {
     try {
       return await proposalApi.getById(id);
@@ -168,7 +180,16 @@ export function useProposals() {
 
   const addPage = async (proposalId: string, pageType: string, pageTitle: string, defaultContent: string = '') => {
     try {
-      const maxOrder = proposals.find(p => p.id === proposalId)?.pages?.length || 0;
+      // Fetch fresh proposal data to get accurate page count
+      const freshProposal = await proposalApi.getById(proposalId);
+      const maxOrder = freshProposal.pages && freshProposal.pages.length > 0
+        ? Math.max(...freshProposal.pages.map(p => p.order || 0)) + 1
+        : 0;
+      
+      console.log('[AddPage] Current pages:', freshProposal.pages?.map(p => ({ title: p.title, order: p.order })));
+      console.log('[AddPage] Calculated maxOrder:', maxOrder);
+      console.log('[AddPage] Adding page with order:', maxOrder);
+      
       await proposalApi.addPage(proposalId, {
         type: pageType as ContentPageType,
         title: pageTitle,
@@ -249,6 +270,7 @@ export function useProposals() {
     createProposal,
     updateProposal,
     deleteProposal,
+    duplicateProposal,
     getProposal,
     addPage,
     updatePage,

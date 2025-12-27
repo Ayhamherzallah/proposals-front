@@ -5,17 +5,20 @@ interface ProcessPageProps {
 }
 
 function PageHeader({ title }: { title: string }) {
+  // Detect if title contains Arabic characters
+  const isArabic = /[\u0600-\u06FF]/.test(title);
+  
   return (
     <div className="relative h-48 bg-gradient-to-r from-[#252E5D] to-[#0230F5] overflow-hidden flex-shrink-0">
-      <div className="absolute top-0 right-0 h-full w-auto">
+      <div className={`absolute top-0 ${isArabic ? 'left-0' : 'right-0'} h-full w-auto`}>
         <img 
           src="/assets/slides/headers_right_pattern.png" 
           alt="" 
-          className="h-full w-auto object-cover opacity-40"
+          className={`h-full w-auto object-cover opacity-40 ${isArabic ? 'scale-x-[-1]' : ''}`}
         />
       </div>
-      <div className="relative z-10 h-full flex flex-col justify-center px-10">
-        <h1 className="text-4xl font-bold text-white">{title}</h1>
+      <div className={`relative z-10 h-full flex flex-col justify-center px-10 ${isArabic ? 'text-right' : 'text-left'}`}>
+        <h1 className={`text-4xl font-bold text-white ${isArabic ? 'font-arabic' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>{title}</h1>
       </div>
     </div>
   );
@@ -41,11 +44,14 @@ function PageFooter() {
 }
 
 export function ProcessPage({ page }: ProcessPageProps) {
+  // Detect if content contains Arabic
+  const isArabic = /[\u0600-\u06FF]/.test(page.content || page.title);
+  
   return (
     <div className="w-[210mm] h-[297mm] bg-white flex flex-col page-break shadow-lg mb-8 print:shadow-none print:mb-0">
       <PageHeader title={page.title} />
       
-      <div className="flex-1 px-10 py-8 overflow-hidden bg-gray-50">
+      <div className={`flex-1 px-10 py-8 overflow-hidden bg-gray-50 ${isArabic ? 'text-right' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>
         <div 
           className="process-display"
           dangerouslySetInnerHTML={{ __html: page.content }}

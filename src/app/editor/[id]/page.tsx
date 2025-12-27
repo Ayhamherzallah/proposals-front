@@ -75,7 +75,14 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
       subHeading: proposal.cover?.subHeading,
       [field]: value 
     };
-    setProposal({ ...proposal, cover: updatedCover });
+    
+    // Update proposal with both cover and language
+    const updatedProposal = {
+      ...proposal,
+      cover: updatedCover,
+      ...(field === 'language' && { language: value })
+    };
+    setProposal(updatedProposal as Proposal);
     
     // Debounce API call - save after user stops typing
     const updates: any = {};
@@ -83,6 +90,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     else if (field === 'preparedBy') updates.prepared_by = value;
     else if (field === 'projectType') updates.project_type = value;
     else if (field === 'date') updates.date = value;
+    else if (field === 'language') updates.language = value;
     
     // Save to backend without blocking UI
     setTimeout(async () => {
@@ -94,7 +102,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
       } finally {
         setIsSyncing(false);
       }
-    }, 800);
+    }, 500);
   };
 
   const updatePage = async (pageId: string, field: string, value: any) => {
@@ -281,9 +289,9 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
                     {activeSection === page.id && <ChevronRight size={16} className="text-white animate-pulse" />}
                   </button>
                   
-                  {/* Action Buttons - Show on Hover */}
+                  {/* Action Buttons - Show on Hover or when Active */}
                   <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 transition-opacity ${
-                    activeSection === page.id ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
+                    activeSection === page.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                   }`}>
                     {/* Reorder Up */}
                     {index > 0 && (
@@ -462,6 +470,18 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-900">Language</label>
+                    <select
+                      value={proposal?.language || 'en'}
+                      onChange={(e) => updateCover('language', e.target.value)}
+                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black/5 outline-none transition-all"
+                    >
+                      <option value="en">English</option>
+                      <option value="ar">Arabic (العربية)</option>
+                    </select>
+                  </div>
                 </div>
               )}
 
@@ -547,6 +567,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
         isOpen={isAddPageModalOpen}
         onClose={() => setIsAddPageModalOpen(false)}
         onAddPage={handleAddPage}
+        language={proposal?.language}
       />
       
       <SyncIndicator isSyncing={isSyncing} />

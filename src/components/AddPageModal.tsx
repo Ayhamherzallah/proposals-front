@@ -2,11 +2,13 @@
 
 import { X, FileText, ListChecks, Clock, DollarSign, StickyNote, Receipt, FileSignature, Workflow } from 'lucide-react';
 import { useState } from 'react';
+import { agreementTemplates } from '@/lib/agreement-templates';
 
 interface AddPageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddPage: (type: string, title: string, content: string) => void;
+  language?: string; // 'en' or 'ar'
 }
 
 const pageTemplates = [
@@ -108,14 +110,18 @@ const pageTemplates = [
     type: 'agreement',
     title: 'Agreement',
     icon: FileSignature,
-    description: 'Terms and conditions',
-    defaultContent: '<h2>Agreement</h2><p>Agreement terms...</p>'
+    description: 'Terms and conditions - Choose template',
+    defaultContent: agreementTemplates['IT Project - English'],
+    hasTemplates: true
   }
 ];
 
-export default function AddPageModal({ isOpen, onClose, onAddPage }: AddPageModalProps) {
+export default function AddPageModal({ isOpen, onClose, onAddPage, language = 'en' }: AddPageModalProps) {
   const [customTitle, setCustomTitle] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<typeof pageTemplates[0] | null>(null);
+  const [selectedAgreementTemplate, setSelectedAgreementTemplate] = useState<string>(
+    language === 'ar' ? 'IT Project - Arabic' : 'IT Project - English'
+  );
 
   if (!isOpen) return null;
 
@@ -123,7 +129,14 @@ export default function AddPageModal({ isOpen, onClose, onAddPage }: AddPageModa
     if (!selectedTemplate) return;
     
     const title = customTitle.trim() || selectedTemplate.title;
-    onAddPage(selectedTemplate.type, title, selectedTemplate.defaultContent);
+    let content = selectedTemplate.defaultContent;
+    
+    // For agreement pages, use selected agreement template
+    if (selectedTemplate.type === 'agreement') {
+      content = agreementTemplates[selectedAgreementTemplate as keyof typeof agreementTemplates] || content;
+    }
+    
+    onAddPage(selectedTemplate.type, title, content);
     
     // Reset and close
     setCustomTitle('');
@@ -198,6 +211,24 @@ export default function AddPageModal({ isOpen, onClose, onAddPage }: AddPageModa
                   className="w-full px-4 py-2.5 bg-[#18181B] border border-[#2C2C2F] rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
                 />
               </label>
+              
+              {selectedTemplate.hasTemplates && (
+                <label className="block">
+                  <span className="text-sm text-gray-400 mb-2 block">
+                    Agreement Template
+                  </span>
+                  <select
+                    value={selectedAgreementTemplate}
+                    onChange={(e) => setSelectedAgreementTemplate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-[#18181B] border border-[#2C2C2F] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="IT Project - English">IT Solutions - English</option>
+                    <option value="IT Project - Arabic">IT Solutions - Arabic (حلول تقنية)</option>
+                    <option value="Design Project - English">Design Services - English</option>
+                    <option value="Design Project - Arabic">Design Services - Arabic (خدمات تصميم)</option>
+                  </select>
+                </label>
+              )}
             </div>
           )}
         </div>

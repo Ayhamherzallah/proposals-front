@@ -42,6 +42,7 @@ export interface Proposal {
   prepared_by: string;
   project_type: string;
   date: string;
+  language?: string; // 'en' or 'ar'
   
   // Backward compatibility
   title?: string;

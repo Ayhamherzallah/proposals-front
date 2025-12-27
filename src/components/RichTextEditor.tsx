@@ -41,6 +41,16 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
         heading: {
           levels: [1, 2, 3],
         },
+        bulletList: {
+          HTMLAttributes: {
+            class: 'bullet-list',
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: 'ordered-list',
+          },
+        },
       }),
       Underline,
       TextStyle,
@@ -50,7 +60,8 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
       }),
       FontSize,
       TextAlign.configure({
-        types: ['heading', 'paragraph'],
+        types: ['heading', 'paragraph', 'bulletList', 'orderedList', 'listItem'],
+        alignments: ['left', 'center', 'right'],
       }),
       Table.configure({
         resizable: true,
@@ -131,7 +142,7 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
   return (
     <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white shadow-lg">
       {/* Premium Toolbar */}
-      <div className="border-b-2 border-gray-200 p-4 bg-gradient-to-r from-gray-50 via-white to-gray-50">
+      <div className="sticky top-0 z-10 border-b-2 border-gray-200 p-4 bg-gradient-to-r from-gray-50 via-white to-gray-50 shadow-sm">
         <div className="flex flex-wrap gap-3">
           {/* Text Formatting */}
           <div className="flex gap-1.5 border-r-2 border-gray-200 pr-3">
@@ -262,7 +273,20 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
           {/* Text Direction (RTL/LTR) */}
           <div className="flex gap-1.5 border-r-2 border-gray-200 pr-3">
             <button
-              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              onClick={() => {
+                editor.chain().focus().setTextAlign('left').run();
+                // Also set dir attribute on lists
+                const { state } = editor;
+                const { from, to } = state.selection;
+                editor.commands.command(({ tr }) => {
+                  state.doc.nodesBetween(from, to, (node, pos) => {
+                    if (node.type.name === 'bulletList' || node.type.name === 'orderedList') {
+                      tr.setNodeMarkup(pos, undefined, { ...node.attrs, dir: 'ltr' });
+                    }
+                  });
+                  return true;
+                });
+              }}
               className={`p-2.5 rounded-xl hover:bg-gray-100 transition-all ${
                 editor.isActive({ textAlign: 'left' }) ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-700 hover:scale-105'
               }`}
@@ -272,7 +296,20 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
               <AlignLeft size={18} />
             </button>
             <button
-              onClick={() => editor.chain().focus().setTextAlign('right').run()}
+              onClick={() => {
+                editor.chain().focus().setTextAlign('right').run();
+                // Also set dir attribute on lists
+                const { state } = editor;
+                const { from, to } = state.selection;
+                editor.commands.command(({ tr }) => {
+                  state.doc.nodesBetween(from, to, (node, pos) => {
+                    if (node.type.name === 'bulletList' || node.type.name === 'orderedList') {
+                      tr.setNodeMarkup(pos, undefined, { ...node.attrs, dir: 'rtl' });
+                    }
+                  });
+                  return true;
+                });
+              }}
               className={`p-2.5 rounded-xl hover:bg-gray-100 transition-all ${
                 editor.isActive({ textAlign: 'right' }) ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-700 hover:scale-105'
               }`}
@@ -386,34 +423,30 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
             >
               <TableIcon size={18} />
             </button>
-            {editor.isActive('table') && (
-              <>
-                <button
-                  onClick={() => editor.chain().focus().addRowBefore().run()}
-                  className="p-2.5 rounded-xl hover:bg-green-100 transition-all text-green-600 hover:scale-105"
-                  type="button"
-                  title="Add Row Above"
-                >
-                  <Plus size={18} />
-                </button>
-                <button
-                  onClick={() => editor.chain().focus().deleteRow().run()}
-                  className="p-2.5 rounded-xl hover:bg-red-100 transition-all text-red-600 hover:scale-105"
-                  type="button"
-                  title="Delete Row"
-                >
-                  <Minus size={18} />
-                </button>
-                <button
-                  onClick={() => editor.chain().focus().deleteTable().run()}
-                  className="p-2.5 rounded-xl hover:bg-red-100 transition-all text-red-600 hover:scale-105"
-                  type="button"
-                  title="Delete Table"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              className="p-2.5 rounded-xl hover:bg-green-100 transition-all text-green-600 hover:scale-105"
+              type="button"
+              title="Add Row Above"
+            >
+              <Plus size={18} />
+            </button>
+            <button
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              className="p-2.5 rounded-xl hover:bg-red-100 transition-all text-red-600 hover:scale-105"
+              type="button"
+              title="Delete Row"
+            >
+              <Minus size={18} />
+            </button>
+            <button
+              onClick={() => editor.chain().focus().deleteTable().run()}
+              className="p-2.5 rounded-xl hover:bg-red-100 transition-all text-red-600 hover:scale-105"
+              type="button"
+              title="Delete Table"
+            >
+              <Trash2 size={18} />
+            </button>
           </div>
 
           {/* Undo/Redo */}
@@ -441,10 +474,15 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
       </div>
 
       {/* Editor Content */}
-      <EditorContent 
-        editor={editor} 
-        className="prose prose-lg prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4 max-w-none p-8 min-h-[500px] focus:outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6"
-      />
+      <div 
+        dir={content && /[\u0600-\u06FF]/.test(content) ? 'rtl' : 'ltr'}
+        style={content && /[\u0600-\u06FF]/.test(content) ? { textAlign: 'right' } : undefined}
+      >
+        <EditorContent 
+          editor={editor} 
+          className="prose prose-lg prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4 max-w-none p-8 min-h-[500px] focus:outline-none [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-6"
+        />
+      </div>
 
       {/* Table Modal */}
       {showTableModal && (

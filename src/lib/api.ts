@@ -46,6 +46,7 @@ const transformProposal = (backendProposal: any): Proposal => {
     prepared_by: backendProposal.prepared_by || '',
     project_type: backendProposal.project_type || '',
     date: backendProposal.date || '',
+    language: backendProposal.language || 'en',
     title: backendProposal.prepared_for || 'Untitled',
     clientName: backendProposal.prepared_for || '',
     cover: {
@@ -55,16 +56,18 @@ const transformProposal = (backendProposal: any): Proposal => {
       date: backendProposal.date || '',
     },
     includeShowcase: true,
-    pages: (backendProposal.pages || []).map((page: any) => ({
-      id: page.id,
-      type: page.type as ContentPageType,
-      title: page.title,
-      content: page.content,
-      is_visible: page.is_visible,
-      isVisible: page.is_visible,
-      order: page.order,
-      created_at: page.created_at,
-    })),
+    pages: (backendProposal.pages || [])
+      .map((page: any) => ({
+        id: page.id,
+        type: page.type as ContentPageType,
+        title: page.title,
+        content: page.content,
+        is_visible: page.is_visible,
+        isVisible: page.is_visible,
+        order: page.order,
+        created_at: page.created_at,
+      }))
+      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0)),
     static_slides: backendProposal.static_slides || [],
   };
 };
@@ -76,6 +79,7 @@ const transformToBackend = (proposal: Partial<Proposal>) => {
     prepared_by: proposal.prepared_by,
     project_type: proposal.project_type,
     date: proposal.date,
+    language: proposal.language,
   };
 };
 
@@ -119,6 +123,12 @@ export const proposalApi = {
   // Delete proposal
   async delete(id: string): Promise<void> {
     await api.delete(`/proposals/proposals/${id}/`);
+  },
+
+  // Duplicate proposal
+  async duplicate(id: string): Promise<Proposal> {
+    const response = await api.post(`/proposals/proposals/${id}/duplicate/`);
+    return transformProposal(response.data);
   },
 
   // Add page to proposal

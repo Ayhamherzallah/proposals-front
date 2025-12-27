@@ -563,3 +563,82 @@ table tbody tr:last-child td,
 table tr:last-child td {
   border-bottom: none !important;
 }
+
+/* RTL List Support - Bulletproof */
+/* RTL Lists */
+ul[style*="text-align: right"],
+ol[style*="text-align: right"],
+ul[style*="text-align:right"],
+ol[style*="text-align:right"],
+ul[dir="rtl"],
+ol[dir="rtl"],
+.ProseMirror ul[data-text-align="right"],
+.ProseMirror ol[data-text-align="right"] {
+  direction: rtl !important;
+  padding-right: 2.5rem !important;
+  padding-left: 0 !important;
+  text-align: right !important;
+}
+
+/* LTR Lists */
+ul[style*="text-align: left"],
+ol[style*="text-align: left"],
+ul[style*="text-align:left"],
+ol[style*="text-align:left"],
+ul[dir="ltr"],
+ol[dir="ltr"],
+.ProseMirror ul[data-text-align="left"],
+.ProseMirror ol[data-text-align="left"] {
+  direction: ltr !important;
+  padding-left: 2.5rem !important;
+  padding-right: 0 !important;
+  text-align: left !important;
+}
+
+/* Default LTR for lists without direction */
+ul:not([dir]):not([style*="text-align"]):not([data-text-align]),
+ol:not([dir]):not([style*="text-align"]):not([data-text-align]) {
+  direction: ltr;
+  padding-left: 2.5rem;
+  padding-right: 0;
+}
+
+/* Ensure list items inherit direction */
+ul[dir="rtl"] li,
+ol[dir="rtl"] li,
+ul[style*="text-align: right"] li,
+ol[style*="text-align: right"] li {
+  text-align: right;
+  direction: rtl;
+}
+
+ul[dir="ltr"] li,
+ol[dir="ltr"] li,
+ul[style*="text-align: left"] li,
+ol[style*="text-align: left"] li {
+  text-align: left;
+  direction: ltr;
+}
+
+
+/* Reduce list item spacing for better formatting */
+.prose ul li,
+.prose ol li {
+  margin-top: 0.25em !important;
+  margin-bottom: 0.25em !important;
+}
+
+.prose ul,
+.prose ol {
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+/* Nested lists */
+.prose ul ul,
+.prose ul ol,
+.prose ol ul,
+.prose ol ol {
+  margin-top: 0.25em !important;
+  margin-bottom: 0.25em !important;
+}
