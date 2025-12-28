@@ -424,10 +424,10 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
               <TableIcon size={18} />
             </button>
             <button
-              onClick={() => editor.chain().focus().addRowBefore().run()}
+              onClick={() => editor.chain().focus().addRowAfter().run()}
               className="p-2.5 rounded-xl hover:bg-green-100 transition-all text-green-600 hover:scale-105"
               type="button"
-              title="Add Row Above"
+              title="Add Row Below"
             >
               <Plus size={18} />
             </button>
