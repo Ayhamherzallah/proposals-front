@@ -372,6 +372,12 @@ export function DynamicPage({ page }: DynamicPageProps) {
           border-radius: 12px;
           overflow: hidden;
         }
+        @media print {
+          table {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+          }
+        }
         table thead tr {
           background: linear-gradient(135deg, #252E5D 0%, #1a2347 100%) !important;
         }

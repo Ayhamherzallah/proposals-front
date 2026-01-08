@@ -642,3 +642,13 @@ ol[style*="text-align: left"] li {
   margin-top: 0.25em !important;
   margin-bottom: 0.25em !important;
 }
+
+@media print {
+  .page-break table,
+  div[class*="prose"] table,
+  div table,
+  table {
+    box-shadow: none !important;
+    filter: none !important;
+  }
+}
