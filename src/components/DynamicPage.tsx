@@ -113,10 +113,8 @@ export function DynamicPage({ page }: DynamicPageProps) {
       document.body.appendChild(sourceDiv);
 
       // 2. Setup Measurement Container
-      // A4 Height (1123px) - Header (192px) - Footer (60px) - Vertical Padding (64px) = 807px
-      // We push limits: 855px for first page (tight), 830px for others (safe)
       const MAX_HEIGHT_FIRST = 860;
-      const MAX_HEIGHT_STD = 830;
+      const MAX_HEIGHT_STD = 830; 
       
       const measureContainer = document.createElement('div');
       measureContainer.className = proseClasses;
@@ -134,6 +132,9 @@ export function DynamicPage({ page }: DynamicPageProps) {
       const chunks: string[] = [];
       const queue = Array.from(sourceDiv.children) as HTMLElement[];
 
+      // Helper: Check if element is a heading
+      const isHeading = (el: HTMLElement) => /^H[1-6]$/.test(el.tagName);
+
       // 3. Process Queue
       while (queue.length > 0) {
         measureContainer.innerHTML = ''; // Start clean for new page
@@ -149,83 +150,197 @@ export function DynamicPage({ page }: DynamicPageProps) {
           const clone = el.cloneNode(true) as HTMLElement;
           measureContainer.appendChild(clone);
 
-          // Check height
-          if (measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT) {
-            // It fits! Keep it.
-            pageElements.push(el); // Start tracking
-            queue.shift(); // Remove from queue (success)
+          const currentHeight = measureContainer.scrollHeight;
+          const fits = currentHeight <= CURRENT_MAX_HEIGHT;
+
+          // STRATEGY: Look ahead! 
+          // If we have [Header -> Table], treat them as a SINGLE INDIVISIBLE UNIT.
+          if (isHeading(el) && queue.length > 1 && queue[1].tagName === 'TABLE') {
+            const tableEl = queue[1];
+            
+            // Check if Header + Table fits on THIS page (without scaling first)
+            const tableClone = tableEl.cloneNode(true) as HTMLElement;
+            measureContainer.appendChild(tableClone);
+            const combinedFits = measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT;
+            
+            if (combinedFits) {
+               // Simple case: Both fit perfectly on current page.
+               pageElements.push(el);
+               pageElements.push(tableEl);
+               queue.shift(); // Remove Header
+               queue.shift(); // Remove Table
+               contentAdded = true;
+               continue;
+            } else {
+               // They don't fit normally.
+               measureContainer.removeChild(tableClone);
+               measureContainer.removeChild(clone); // Remove header from measure check
+               
+               // CASE 1: We are not on a fresh page. 
+               // Move BOTH to the next page to give them maximum room.
+               if (pageElements.length > 0) {
+                 break; // Force new page
+               }
+               
+               // CASE 2: We ARE on a fresh page (or forced to be).
+               // It means the Table is huge. We MUST Add Header + Scaled Table.
+               
+               // 1. Add Header (it definitely fits on a fresh page unless it's 800px tall??)
+               pageElements.push(el);
+               queue.shift();
+               measureContainer.appendChild(clone); 
+               
+               // 2. Calculate remaining space for Table
+               const usedHeight = measureContainer.scrollHeight;
+               const remainingHeight = CURRENT_MAX_HEIGHT - usedHeight - 20; // 20px buffer
+               
+               // 3. Create wrapper and scale table to fit remaining space
+               const tableHeight = tableEl.scrollHeight || 600; // heuristic if not rendered
+               // We need to render table off-screen to get true height if possible, 
+               // but tableClone was just measured.
+               // Let's rely on visual scaling logic.
+               
+               // We assume tableClone natural height is what we saw before.
+               // Re-measure table safely
+               const tempContainer = document.createElement('div');
+               tempContainer.className = proseClasses;
+               tempContainer.style.width = '210mm';
+               tempContainer.style.position = 'absolute';
+               tempContainer.style.visibility = 'hidden';
+               document.body.appendChild(tempContainer);
+               tempContainer.appendChild(tableEl.cloneNode(true));
+               const naturalTableHeight = tempContainer.scrollHeight;
+               document.body.removeChild(tempContainer);
+               
+               const scaleFactor = Math.min(1, remainingHeight / naturalTableHeight);
+               
+               const wrapper = document.createElement('div');
+               wrapper.style.width = '100%';
+               wrapper.style.height = `${naturalTableHeight * scaleFactor}px`; // Exact scaled height
+               wrapper.style.overflow = 'hidden';
+               wrapper.style.marginBottom = '0'; // Clean
+               
+               const scaledTable = tableEl.cloneNode(true) as HTMLElement;
+               scaledTable.style.transform = `scale(${scaleFactor})`;
+               scaledTable.style.transformOrigin = 'top left';
+               scaledTable.style.width = `${100 / scaleFactor}%`;
+               
+               wrapper.appendChild(scaledTable);
+               pageElements.push(wrapper);
+               queue.shift(); // Remove Table
+               contentAdded = true;
+               
+               // We filled the page with this scaled table.
+               break; 
+            }
+          }
+
+          // SPECIAL HANDLING: Table Alone (not following header immediately)
+          // Just scale it if it doesn't fit.
+          if (el.tagName === 'TABLE') {
+             if (fits) {
+               pageElements.push(el);
+               queue.shift();
+               contentAdded = true;
+               continue;
+             } else {
+               measureContainer.removeChild(clone);
+               
+               // If not fresh page, move to next
+               if (pageElements.length > 0) {
+                 break;
+               }
+               
+               // Fresh page -> Scale to fit
+               const scaleFactor = Math.min(1, (CURRENT_MAX_HEIGHT - 20) / currentHeight);
+               
+               const wrapper = document.createElement('div');
+               wrapper.style.width = '100%';
+               wrapper.style.height = `${currentHeight * scaleFactor}px`;
+               wrapper.style.overflow = 'hidden';
+               
+               const scaledTable = el.cloneNode(true) as HTMLElement;
+               scaledTable.style.transform = `scale(${scaleFactor})`;
+               scaledTable.style.transformOrigin = 'top left';
+               scaledTable.style.width = `${100 / scaleFactor}%`;
+               
+               wrapper.appendChild(scaledTable);
+               pageElements.push(wrapper);
+               queue.shift();
+               contentAdded = true;
+               break;
+             }
+          }
+
+          // SPECIAL HANDLING: Standard Orphans (Header at bottom)
+          if (fits && isHeading(el) && queue.length > 1) {
+             // Standard orphan check for non-table elements
+             const nextEl = queue[1];
+             if (nextEl.tagName !== 'TABLE') { // Tables handled above
+                const nextClone = nextEl.cloneNode(true) as HTMLElement;
+                measureContainer.appendChild(nextClone);
+                if (measureContainer.scrollHeight > CURRENT_MAX_HEIGHT) {
+                   if (pageElements.length > 0) {
+                     measureContainer.removeChild(clone);
+                     measureContainer.removeChild(nextClone);
+                     break; 
+                   }
+                }
+                if (measureContainer.contains(nextClone)) measureContainer.removeChild(nextClone);
+             }
+          }
+
+          // NORMAL ELEMENT HANDLING
+          if (fits) {
+            pageElements.push(el);
+            queue.shift();
             contentAdded = true;
           } else {
-            // It overflowed.
-            measureContainer.removeChild(clone); // Backtrack first
+            measureContainer.removeChild(clone);
 
-            // SPLITTING LOGIC: Check if we can split this element (UL/OL)
+            // List Splitting Logic
             const isList = (el.tagName === 'UL' || el.tagName === 'OL');
             if (isList && el.children.length > 0) {
-              // Create a partial list for the current page
-              const partialList = el.cloneNode(false) as HTMLElement; // shallow clone (same tag/classes, no children)
+              const partialList = el.cloneNode(false) as HTMLElement;
               measureContainer.appendChild(partialList);
-              
               const listItems = Array.from(el.children);
               let splitIndex = 0;
               let itemsAdded = false;
 
-              // Try to add list items one by one
               for (let i = 0; i < listItems.length; i++) {
                 const item = listItems[i].cloneNode(true) as HTMLElement;
                 partialList.appendChild(item);
-                
                 if (measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT) {
                   splitIndex = i + 1;
                   itemsAdded = true;
                 } else {
-                  partialList.removeChild(item); // Remove the one that broke it
-                  break; // Stop adding items
+                  partialList.removeChild(item); break;
                 }
               }
 
               if (itemsAdded) {
-                // We successfully fit SOME items. 
-                // 1. Save the partial list to this page
                 const finalPartial = el.cloneNode(false) as HTMLElement;
-                for (let i = 0; i < splitIndex; i++) {
-                    finalPartial.appendChild(listItems[i].cloneNode(true));
-                }
+                for (let i = 0; i < splitIndex; i++) finalPartial.appendChild(listItems[i].cloneNode(true));
                 pageElements.push(finalPartial);
                 contentAdded = true;
 
-                // 2. Modify the original element in queue to only contain REMAINING items
-                // We can't strictly modify 'el' if it's a reference to sourceDiv (might break if re-rendered).
-                // Better to create a new element for the remainder and UNSHIFT it to queue (replacing old one).
                 const remainingList = el.cloneNode(false) as HTMLElement;
-                for (let i = splitIndex; i < listItems.length; i++) {
-                    remainingList.appendChild(listItems[i].cloneNode(true));
-                }
-                
-                // Replace the original full list with the remaining part
+                for (let i = splitIndex; i < listItems.length; i++) remainingList.appendChild(listItems[i].cloneNode(true));
                 queue[0] = remainingList;
-                
-                // Break because page is definitely full now
                 break; 
               } else {
-                // Even the first item didn't fit!
-                // Treat it like a normal overflow (backtrack whole element)
-                // Logic below handles this.
                  measureContainer.removeChild(partialList);
               }
             }
 
-            // Standard Overflow Handling (Non-splittable or failed split)
+            // Fallback
             if (!contentAdded) {
-              // Edge Case: The very first element is too big for the page.
-              pageElements.push(el);
-              queue.shift();
-            } else {
-              // Standard Case: Element goes to next page
-              // We already removed it from measureContainer.
-              // Just leave it in queue[0] for next iteration.
+               if (pageElements.length === 0) {
+                 pageElements.push(el);
+                 queue.shift();
+               }
             }
-            break; // Page is full
+            break; // Page full
           }
         }
         
@@ -243,18 +358,7 @@ export function DynamicPage({ page }: DynamicPageProps) {
       document.body.removeChild(measureContainer);
 
       if (chunks.length > 0) {
-        // Optimized: Check for simple orphan headings at the absolute end of a page
-        // If a page ends with a Heading, and it's not the only thing on the page, move it to next page.
-        // This is a post-processing refinement.
-        const refinedChunks = [...chunks];
-        for (let i = 0; i < refinedChunks.length - 1; i++) {
-           if (refinedChunks[i].match(/<h[1-6][^>]*>[^<]+<\/h[1-6]>$/i)) {
-             // Regex simple check: logic handles this better if we do it in the loop, 
-             // but let's trust the height logic first as users prefer full pages over orphan perfection initially.
-             // We'll skip complex regex manipulation to avoid breaking layout.
-           }
-        }
-        setContentChunks(refinedChunks);
+        setContentChunks(chunks);
       }
     }
   }, [page.content, proseClasses]);
