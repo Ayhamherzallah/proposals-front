@@ -376,7 +376,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
       <main className="flex-1 overflow-y-auto bg-background relative">
         <div className="max-w-6xl mx-auto py-12 px-12">
           
-          <div className="bg-card rounded-2xl shadow-sm border border-border min-h-[600px] flex flex-col overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-sm border border-border min-h-[600px] flex flex-col overflow-clip">
             {/* Header */}
             <div className="h-16 border-b border-gray-100 flex items-center px-8 justify-between bg-white sticky top-0 z-10">
                <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
