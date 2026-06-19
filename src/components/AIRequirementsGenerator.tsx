@@ -134,127 +134,111 @@ Generate comprehensive, detailed requirements that feel natural and specific to 
   if (!isExpanded) {
     return (
       <button
+        type="button"
         onClick={() => setIsExpanded(true)}
-        className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#252E5D] to-[#0230F5] text-white rounded-lg hover:from-[#1a2347] hover:to-[#0226d9] transition-all shadow-md hover:shadow-lg font-medium text-sm"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#e2e8f0] rounded-lg hover:border-[#0230F5] hover:text-[#0230F5] bg-white transition-colors"
       >
-        <Sparkles size={16} />
-        <span>Generate with AI</span>
+        <Sparkles size={13} />
+        AI assist
       </button>
     );
   }
 
   return (
-    <div className="mb-6 border-2 border-[#0230F5]/20 rounded-xl bg-white shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#252E5D] to-[#0230F5] px-5 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-white/20 rounded-lg">
-            <Sparkles size={18} className="text-white" />
-          </div>
-          <div>
-            <h3 className="font-bold text-white text-sm">AI Requirements Generator</h3>
-            <p className="text-blue-100 text-xs">Powered by GPT-4o</p>
-          </div>
+    <div className="fixed top-14 right-4 z-50 w-[min(420px,calc(100vw-2rem))] border border-[#e2e8f0] rounded-xl bg-white shadow-2xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc]">
+        <div>
+          <h3 className="font-semibold text-[#0f172a] text-sm">Generate requirements</h3>
+          <p className="text-[#64748b] text-xs">Describe the project — content fills the page below.</p>
         </div>
         <button
+          type="button"
           onClick={() => setIsExpanded(false)}
-          className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-[#e2e8f0] rounded-md transition-colors"
         >
-          <X size={18} className="text-white" />
+          <X size={16} className="text-[#64748b]" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="p-5 space-y-4">
-        {/* Project Type */}
+      <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
-            Project Type
-          </label>
+          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Project type</label>
           <input
             type="text"
             value={projectType}
             onChange={(e) => setProjectType(e.target.value)}
-            placeholder="e.g., Website, Mobile App, Branding, UI/UX Design, Packaging..."
-            className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#0230F5] focus:ring-2 focus:ring-[#0230F5]/20 outline-none transition-all text-sm"
+            placeholder="Website, mobile app, branding…"
+            className="w-full px-3 py-2 border border-[#e2e8f0] rounded-lg focus:border-[#0230F5] outline-none text-sm"
           />
         </div>
 
-        {/* Project Description */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">
-              Project Description <span className="text-red-500">*</span>
+            <label className="block text-xs font-medium text-[#64748b]">
+              Description <span className="text-red-500">*</span>
             </label>
             <button
               type="button"
               onClick={() => setProjectDescription(`Describe your project requirements:\n\n- Main objectives and goals\n- Key features or deliverables needed\n- Target users or audience (if applicable)\n- Any specific requirements or constraints\n- Desired outcomes`)}
-              className="text-xs text-[#0230F5] hover:underline font-medium"
+              className="text-xs text-[#0230F5] hover:underline"
             >
-              Use Template
+              Use template
             </button>
           </div>
           <textarea
             value={projectDescription}
             onChange={(e) => setProjectDescription(e.target.value)}
-            placeholder="Describe your project in detail... What are you building? Who is it for? What are the main features?"
-            className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#0230F5] focus:ring-2 focus:ring-[#0230F5]/20 outline-none transition-all resize-none text-sm"
-            rows={5}
+            placeholder="What are you building? Who is it for?"
+            className="w-full px-3 py-2 border border-[#e2e8f0] rounded-lg focus:border-[#0230F5] outline-none resize-none text-sm"
+            rows={4}
           />
         </div>
 
-        {/* Feedback (shown after first generation) */}
         {hasGenerated && (
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
-              Improvements / Changes <span className="text-gray-400">(Optional)</span>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">
+              Refinement notes <span className="text-[#94a3b8]">(optional)</span>
             </label>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="What would you like to improve, add, or change? e.g., 'Add more payment options', 'Include social media integration', 'Focus more on design specifications'"
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#0230F5] focus:ring-2 focus:ring-[#0230F5]/20 outline-none transition-all resize-none text-sm"
-              rows={3}
+              placeholder="What should change in the generated content?"
+              className="w-full px-3 py-2 border border-[#e2e8f0] rounded-lg focus:border-[#0230F5] outline-none resize-none text-sm"
+              rows={2}
             />
           </div>
         )}
 
-        {/* Info Box */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
-          <p className="text-xs text-gray-700">
-            <strong className="text-[#0230F5]">💡 Tip:</strong> {hasGenerated ? 'Add specific feedback to improve the requirements. The AI will refine based on your input.' : 'The more details you provide, the better the AI-generated requirements will be.'}
-          </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-2 pt-1">
           <button
+            type="button"
             onClick={generateRequirements}
             disabled={!projectDescription.trim() || isGenerating}
-            className="flex-1 px-5 py-2.5 bg-gradient-to-r from-[#252E5D] to-[#0230F5] text-white rounded-lg hover:from-[#1a2347] hover:to-[#0226d9] transition-all font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+            className="flex-1 px-4 py-2 bg-[#252E5D] text-white rounded-lg hover:bg-[#1a2347] text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isGenerating ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
-                Generating...
+                <Loader2 size={14} className="animate-spin" />
+                Generating…
               </>
             ) : hasGenerated ? (
               <>
-                <RotateCcw size={16} />
-                Regenerate with Feedback
+                <RotateCcw size={14} />
+                Regenerate
               </>
             ) : (
               <>
-                <Sparkles size={16} />
-                Generate Requirements
+                <Sparkles size={14} />
+                Generate
               </>
             )}
           </button>
           <button
+            type="button"
             onClick={() => setIsExpanded(false)}
-            className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+            className="px-4 py-2 border border-[#e2e8f0] text-[#475569] rounded-lg hover:bg-[#f8fafc] text-sm"
           >
-            Cancel
+            Close
           </button>
         </div>
       </div>

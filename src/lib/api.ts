@@ -83,23 +83,78 @@ const transformToBackend = (proposal: Partial<Proposal>) => {
   };
 };
 
+// Lightweight transform for list views (no nested pages)
+const transformProposalSummary = (backendProposal: any): Proposal => {
+  return {
+    id: backendProposal.id,
+    created_by: backendProposal.created_by,
+    created_by_name: backendProposal.created_by_name,
+    created_at: backendProposal.created_at,
+    last_modified: new Date(backendProposal.last_modified).getTime(),
+    lastModified: new Date(backendProposal.last_modified).getTime(),
+    prepared_for: backendProposal.prepared_for || '',
+    prepared_by: backendProposal.prepared_by || '',
+    project_type: backendProposal.project_type || '',
+    date: backendProposal.date || '',
+    language: backendProposal.language || 'en',
+    title: backendProposal.prepared_for || 'Untitled',
+    clientName: backendProposal.prepared_for || '',
+    cover: {
+      preparedFor: backendProposal.prepared_for || '',
+      preparedBy: backendProposal.prepared_by || '',
+      projectType: backendProposal.project_type || '',
+      date: backendProposal.date || '',
+    },
+    includeShowcase: true,
+    pages: [],
+    static_slides: [],
+  };
+};
+
+// Resolve paginated "next" URL to a path relative to axios baseURL
+function resolveNextPagePath(nextUrl: string): string {
+  try {
+    const base = new URL(API_BASE_URL);
+    const next = new URL(nextUrl);
+    let path = next.pathname;
+    if (path.startsWith(base.pathname)) {
+      path = path.slice(base.pathname.length);
+    }
+    return path + next.search;
+  } catch {
+    return nextUrl;
+  }
+};
+
 // API Service
 export const proposalApi = {
-  // Get all proposals
+  // Get all proposals (follows pagination until complete)
   async getAll(): Promise<Proposal[]> {
-    const response = await api.get('/proposals/proposals/');
-    // Handle both paginated and non-paginated responses
-    const data = response.data.results || response.data;
-    if (!Array.isArray(data)) {
-      console.error('Unexpected API response:', response.data);
-      return [];
+    const all: any[] = [];
+    let url: string | null = '/proposals/proposals/';
+
+    while (url) {
+      const response: { data: unknown } = await api.get(url);
+      const body = response.data as
+        | Record<string, unknown>
+        | unknown[];
+
+      if (Array.isArray(body)) {
+        all.push(...body);
+        break;
+      }
+
+      const paginated = body as { results?: unknown[]; next?: string | null };
+      if (paginated.results && Array.isArray(paginated.results)) {
+        all.push(...paginated.results);
+        url = paginated.next ? resolveNextPagePath(paginated.next) : null;
+      } else {
+        console.error('Unexpected API response:', body);
+        break;
+      }
     }
-    return data.map((p: any) => ({
-      ...p,
-      last_modified: new Date(p.last_modified).getTime(),
-      pages: [],
-      static_slides: [],
-    }));
+
+    return all.map(transformProposalSummary);
   },
 
   // Get single proposal with all details

@@ -32,22 +32,7 @@ export function useProposals() {
       setError(null);
       const data = await proposalApi.getAll();
       console.log('[Store] Loaded proposals from API:', data.length);
-      // Transform to match frontend expectations
-      const transformed = data.map(p => ({
-        ...p,
-        lastModified: p.last_modified,
-        title: p.prepared_for || 'Untitled',
-        clientName: p.prepared_for || '',
-        cover: {
-          preparedFor: p.prepared_for,
-          preparedBy: p.prepared_by,
-          projectType: p.project_type,
-          date: p.date,
-        },
-        includeShowcase: true,
-        pages: p.pages || [],
-      }));
-      setProposals(transformed);
+      setProposals(data);
     } catch (err: any) {
       console.error('[Store] Failed to load proposals:', err);
       setError(err.message || 'Failed to load proposals');
@@ -88,7 +73,39 @@ export function useProposals() {
         {
           type: 'timeline',
           title: 'Timeline',
-          content: '<h2>Project Timeline</h2><p>Timeline details...</p>',
+          content: `<p class="proposal-section-label">Project Schedule</p>
+<table class="premium-table">
+<thead>
+<tr>
+<th>Phase</th>
+<th>Duration</th>
+<th>Deliverables</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery & Planning</strong></td>
+<td>Week 1–2</td>
+<td>Requirements document, project roadmap</td>
+</tr>
+<tr>
+<td><strong>Design</strong></td>
+<td>Week 3–4</td>
+<td>UI/UX mockups, design system</td>
+</tr>
+<tr>
+<td><strong>Development</strong></td>
+<td>Week 5–10</td>
+<td>Core features, integrations, testing</td>
+</tr>
+<tr>
+<td><strong>Launch & Support</strong></td>
+<td>Week 11–12</td>
+<td>Deployment, training, handover</td>
+</tr>
+</tbody>
+</table>
+<p class="proposal-note">Timeline is subject to client feedback cycles and scope confirmation.</p>`,
           is_visible: true,
           order: 2,
         },
@@ -283,9 +300,7 @@ export function useProposals() {
 
 // Default content helpers
 function getDefaultRequirementsContent(): string {
-  return `<div class="mb-6">
-<span style="background-color: #2563eb; color: white; padding: 8px 24px; border-radius: 24px; font-weight: 600; display: inline-block;">Objectives</span>
-</div>
+  return `<p class="proposal-section-label">Objectives</p>
 <ul>
 <li>Automate all business operations (wash services, detailing, product sales).</li>
 <li>Centralize data for customers, vehicles, and transactions.</li>
@@ -294,10 +309,8 @@ function getDefaultRequirementsContent(): string {
 <li>Simplify employee task management and commission tracking.</li>
 </ul>
 
-<div class="mt-8 mb-6">
-<span style="background-color: #2563eb; color: white; padding: 8px 24px; border-radius: 24px; font-weight: 600; display: inline-block;">Core Modules</span>
-</div>
-<h3><strong>Dashboard</strong></h3>
+<p class="proposal-section-label">Core Modules</p>
+<h3>Dashboard</h3>
 <ul>
 <li>Daily summary of income, sales, and completed services</li>
 <li>Pending services, appointments, and staff performance overview</li>
@@ -339,27 +352,36 @@ function getDefaultProcessContent(): string {
 }
 
 function getDefaultInvestmentContent(): string {
-  return `<h2>Project Investment</h2>
-<table>
+  return `<p class="proposal-section-label">Cost Breakdown</p>
+<table class="premium-table">
 <thead>
 <tr>
 <th>Item</th>
+<th>Description</th>
 <th>Cost</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Development</strong></td>
+<td>Backend, frontend, and system integration</td>
 <td>$XX,XXX</td>
 </tr>
 <tr>
 <td><strong>Design</strong></td>
+<td>UI/UX design and prototyping</td>
 <td>$XX,XXX</td>
 </tr>
 <tr>
 <td><strong>Testing & QA</strong></td>
+<td>Quality assurance and UAT support</td>
 <td>$XX,XXX</td>
 </tr>
+<tr class="total-row">
+<td colspan="2"><strong>Total Investment</strong></td>
+<td><strong>$XX,XXX</strong></td>
+</tr>
 </tbody>
-</table>`;
+</table>
+<p class="proposal-note">All prices are exclusive of VAT. Payment terms to be agreed upon contract signing.</p>`;
 }

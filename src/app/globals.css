@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 :root {
+  /* Clicks Digitals Brand */
+  --brand-navy: #252E5D;
+  --brand-blue: #0230F5;
+  --brand-navy-dark: #1a2347;
+  --brand-surface: #f8faff;
+  --brand-border: #e8edf5;
+
   /* Premium Professional Palette */
   --foreground: 15 23 42; /* Slate 900 */
   --background: 248 250 252; /* Slate 50 */
@@ -14,7 +21,7 @@
   --secondary: 241 245 249; /* Slate 100 */
   --secondary-foreground: 30 41 59;
   
-  --accent: 37 99 235; /* Blue 600 */
+  --accent: 2 48 245; /* Brand Blue #0230F5 */
   --accent-foreground: 255 255 255;
   
   --muted: 241 245 249;
@@ -26,6 +33,114 @@
   --border: 226 232 240; /* Slate 200 */
   
   --radius: 0.75rem;
+}
+
+.font-arabic {
+  font-family: var(--font-noto-arabic), var(--font-sora), system-ui, sans-serif;
+  letter-spacing: 0;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Arabic / RTL proposal content gets the modern Arabic typeface and
+   comfortable line-height automatically. */
+.proposal-prose[dir='rtl'],
+[dir='rtl'] .proposal-prose {
+  font-family: var(--font-noto-arabic), var(--font-sora), system-ui, sans-serif;
+  line-height: 1.95;
+  letter-spacing: 0;
+}
+
+.proposal-prose[dir='rtl'] h1,
+.proposal-prose[dir='rtl'] h2,
+.proposal-prose[dir='rtl'] h3,
+.proposal-prose[dir='rtl'] strong {
+  letter-spacing: 0;
+}
+
+/* ─── Ordered / unordered list numbering (custom blue markers) ───
+   These are defined here (not via Tailwind arbitrary utilities) because
+   `counter-reset`/`counter-increment` have no Tailwind utility, so the
+   arbitrary classes silently produced no CSS and every number rendered as 0. */
+.proposal-prose ol {
+  list-style: none;
+  counter-reset: proposal-item;
+}
+
+.proposal-prose ol > li {
+  counter-increment: proposal-item;
+  position: relative;
+  padding-left: 1.9rem;
+}
+
+.proposal-prose ol > li::before {
+  content: counter(proposal-item) ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 700;
+  color: #0230F5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* RTL list markers: flip bullet / number to the right side.
+   NOTE: the legacy global list rules below force `direction: ltr` + left
+   padding on any <ul>/<ol> that has no dir attribute (which is the case in
+   the preview, where dir lives on the wrapper). These !important overrides
+   re-establish proper RTL flow for Arabic content. */
+.proposal-prose[dir='rtl'] ul,
+.proposal-prose[dir='rtl'] ol {
+  direction: rtl !important;
+  padding-left: 0 !important;
+  padding-right: 2.5rem !important;
+  text-align: right !important;
+}
+
+.proposal-prose[dir='rtl'] li {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.proposal-prose[dir='rtl'] ul > li,
+.proposal-prose[dir='rtl'] ol > li {
+  padding-left: 0;
+}
+
+.proposal-prose[dir='rtl'] ul > li {
+  padding-right: 1.25rem;
+}
+
+.proposal-prose[dir='rtl'] ol > li {
+  padding-right: 1.9rem;
+}
+
+.proposal-prose[dir='rtl'] ul > li::before,
+.proposal-prose[dir='rtl'] ol > li::before {
+  left: auto;
+  right: 0;
+}
+
+.proposal-prose[dir='rtl'] ol > li::before {
+  content: counter(proposal-item) ".";
+}
+
+/* RTL block alignment + accent positions */
+.proposal-prose[dir='rtl'] {
+  text-align: right;
+}
+
+.proposal-prose[dir='rtl'] .proposal-section-label {
+  border-left: none;
+  border-right: 2px solid #0230F5;
+  padding-left: 0;
+  padding-right: 0.75rem;
+}
+
+.proposal-prose[dir='rtl'] blockquote {
+  border-left: none;
+  border-right: 3px solid #0230F5;
+  padding-left: 0;
+  padding-right: 1rem;
 }
 
 @layer base {
@@ -51,6 +166,157 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Proposal Studio ─── */
+.studio-topbar {
+  background: linear-gradient(180deg, #141824 0%, #0f1219 100%);
+}
+
+.studio-canvas {
+  background-color: #e9ecf2;
+}
+
+/* Preserve intentional blank lines from the editor in both the canvas and
+   the final rendered proposal. An empty <p></p> would otherwise collapse. */
+.studio-editor .ProseMirror p:empty,
+.proposal-prose p:empty {
+  min-height: 1.6em;
+}
+
+.studio-editor .ProseMirror p:empty::before,
+.proposal-prose p:empty::before {
+  content: "\00a0";
+}
+
+.studio-panel {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.04);
+}
+
+.studio-artboard {
+  position: relative;
+}
+
+.studio-artboard-frame .studio-artboard-scroll {
+  max-height: min(70vh, 640px);
+}
+
+.studio-slide-thumb:hover {
+  border-color: #0230F5;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(2, 48, 245, 0.08);
+}
+
+.studio-loading-ring {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-top-color: #0230F5;
+  animation: studio-spin 0.9s linear infinite;
+}
+
+@keyframes studio-spin {
+  to { transform: rotate(360deg); }
+}
+
+.studio-nav-item:active {
+  transform: scale(0.99);
+}
+
+.studio-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: 'Start writing your proposal content…';
+  color: #cbd5e1;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.studio-format-bar {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.studio-format-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.studio-page-sheet {
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.04),
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 18px 50px -12px rgba(15, 23, 42, 0.18);
+}
+
+/* Keep all editor content inside the page sheet */
+.studio-editor .ProseMirror {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.studio-editor .ProseMirror > * {
+  max-width: 100%;
+}
+
+.studio-editor .ProseMirror .tableWrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 1.5rem 0;
+}
+
+.studio-editor .ProseMirror table,
+.studio-editor .ProseMirror .premium-table {
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+}
+
+.studio-editor .ProseMirror table td,
+.studio-editor .ProseMirror table th,
+.studio-editor .ProseMirror .premium-table td,
+.studio-editor .ProseMirror .premium-table th {
+  min-width: 36px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  position: relative;
+}
+
+/* Column resize handles (drag to adjust column width) */
+.studio-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #0230F5;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.studio-editor .ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+.studio-editor .ProseMirror h1 {
+  font-size: 1.75rem;
+  margin-top: 0;
+}
+
+.studio-editor .ProseMirror h2 {
+  font-size: 1.375rem;
+}
+
+.studio-editor .ProseMirror h3 {
+  font-size: 1.125rem;
 }
 
 /* Glassmorphism & Modern Utils */
@@ -121,7 +387,7 @@
 .modern-table th {
   font-weight: 700;
   text-align: left;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%);
   color: white;
   font-size: 0.875rem;
   text-transform: uppercase;
@@ -190,7 +456,7 @@
 }
 
 .premium-table thead {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%);
   position: relative;
 }
 
@@ -266,49 +532,199 @@
   border-radius: 4px;
 }
 
-/* Process Page Styles */
+/* Process — modern deal-ready steps */
 .process-display .process-container {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .process-display .process-step {
-  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
-  border-radius: 1rem;
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 1rem 1.125rem;
+  background: #fafbfd;
+  border: 1px solid #e8edf5;
+  border-radius: 8px;
 }
 
 .process-display .step-number {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #2563EB;
-  line-height: 1;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 8px;
   flex-shrink: 0;
-  width: 60px;
-  text-align: left;
-}
-
-.process-display .step-content {
-  flex: 1;
-  padding-top: 0.25rem;
 }
 
 .process-display .step-title {
-  font-size: 1.125rem;
+  font-size: 15px;
   font-weight: 700;
-  color: #2563EB;
-  margin-bottom: 0.375rem;
-  line-height: 1.2;
+  color: #252E5D;
+  margin-bottom: 0.35rem;
 }
 
 .process-display .step-description {
-  font-size: 0.875rem;
-  color: #1e293b;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.process-display[dir='rtl'] .process-step {
+  direction: rtl;
+}
+
+/* Proposal tables — brand gradient headers */
+.page-break .proposal-prose table,
+.page-break .premium-table,
+.page-break table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.5rem 0;
+  font-size: 14px;
   line-height: 1.5;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #c7d2e3;
+  box-shadow: 0 2px 8px rgba(37, 46, 93, 0.06) !important;
+}
+
+.page-break .proposal-prose table thead,
+.page-break .premium-table thead,
+.page-break table thead,
+.page-break table tr:first-child {
+  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%) !important;
+}
+
+.page-break .proposal-prose table th,
+.page-break .premium-table th,
+.page-break table th,
+.page-break table tr:first-child th,
+.page-break table tr:first-child td {
+  background: transparent !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 13px 18px !important;
+  border: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+  text-align: left !important;
+}
+
+.page-break table th:last-child,
+.page-break table tr:first-child td:last-child {
+  border-right: none !important;
+}
+
+.page-break table th *,
+.page-break table thead td * {
+  color: #ffffff !important;
+}
+
+.page-break table td {
+  padding: 12px 18px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-right: 1px solid #f1f5f9 !important;
+  color: #334155 !important;
+  background: #ffffff !important;
+  vertical-align: middle !important;
+}
+
+.page-break table td:last-child {
+  border-right: none !important;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-break table th:last-child {
+  text-align: right !important;
+}
+
+.page-break table tbody tr:nth-child(even) td {
+  background: #f8faff !important;
+}
+
+.page-break table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+.page-break table tr.total-row td {
+  background: linear-gradient(135deg, #eef2ff 0%, #e8eeff 100%) !important;
+  border-top: 2px solid #0230F5 !important;
+  font-weight: 700 !important;
+  color: #252E5D !important;
+  font-size: 15px !important;
+}
+
+.proposal-section-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%);
+  padding: 6px 12px;
+  border-radius: 4px;
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+.proposal-section-label::before {
+  display: none;
+}
+
+.proposal-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin: 24px 0;
+}
+
+.proposal-note {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f8faff;
+  border: 1px solid #e2e8f0;
+  line-height: 1.6;
+}
+
+.proposal-prose span[style*='background-color'] {
+  display: inline-flex !important;
+  align-items: center;
+  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%) !important;
+  color: #ffffff !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  margin-top: 24px !important;
+  margin-bottom: 16px !important;
+}
+
+.proposal-prose span[style*='background-color']::before {
+  display: none;
+}
+
+/* Proposal content typography */
+.proposal-prose {
+  font-feature-settings: 'kern' 1, 'liga' 1;
 }
 
 /* Print Overrides */
@@ -317,6 +733,10 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
+  }
+
+  [style*='transform: scale'] {
+    transform: none !important;
   }
   
   body {
@@ -380,6 +800,10 @@
   .print\:mb-0 {
     margin-bottom: 0 !important;
   }
+
+  .proposal-preview-scale {
+    transform: none !important;
+  }
   
   /* Force page breaks before overflow */
   .prose > * {
@@ -410,158 +834,6 @@
   .page-break {
     position: relative;
   }
-}
-
-/* PREVIEW PAGE TABLE STYLING - MAXIMUM SPECIFICITY */
-/* Target ALL possible table selectors */
-.page-break table,
-div[class*="prose"] table,
-div table,
-table {
-  border-spacing: 0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
-  border-collapse: separate !important;
-}
-
-/* Table header background - ALL possible selectors */
-.page-break table thead,
-.page-break table thead tr,
-.page-break table tr:first-child,
-div[class*="prose"] table thead,
-div[class*="prose"] table thead tr,
-div[class*="prose"] table tr:first-child,
-div table thead,
-div table thead tr,
-div table tr:first-child,
-table thead,
-table thead tr,
-table tr:first-child {
-  background: linear-gradient(135deg, #252E5D 0%, #0230F5 100%) !important;
-}
-
-/* Table header cells - ALL possible selectors */
-.page-break table th,
-.page-break table thead th,
-.page-break table thead td,
-.page-break table tr:first-child th,
-.page-break table tr:first-child td,
-div[class*="prose"] table th,
-div[class*="prose"] table thead th,
-div[class*="prose"] table thead td,
-div[class*="prose"] table tr:first-child th,
-div[class*="prose"] table tr:first-child td,
-div table th,
-div table thead th,
-div table thead td,
-div table tr:first-child th,
-div table tr:first-child td,
-table th,
-table thead th,
-table thead td,
-table tr:first-child th,
-table tr:first-child td,
-th,
-thead th,
-thead td {
-  background: transparent !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  padding: 1rem 1.25rem !important;
-  border: none !important;
-  border-bottom: 2px solid #0230F5 !important;
-}
-
-/* Extra specific for text color only */
-table th *,
-table thead th *,
-table thead td *,
-table tr:first-child th *,
-table tr:first-child td *,
-th *,
-thead th *,
-thead td * {
-  color: #ffffff !important;
-}
-
-/* Even more specific for paragraph and span elements in headers */
-table th p,
-table th span,
-table thead th p,
-table thead th span,
-table thead td p,
-table thead td span,
-th p,
-th span,
-thead th p,
-thead th span,
-thead td p,
-thead td span {
-  color: #ffffff !important;
-}
-
-/* Table body rows */
-.page-break table tbody tr,
-div[class*="prose"] table tbody tr,
-div table tbody tr,
-table tbody tr,
-.page-break table tr:not(:first-child),
-div[class*="prose"] table tr:not(:first-child),
-div table tr:not(:first-child),
-table tr:not(:first-child) {
-  background: transparent !important;
-}
-
-/* Odd rows */
-.page-break table tbody tr:nth-child(odd) td,
-.page-break table tr:nth-child(even) td,
-div[class*="prose"] table tbody tr:nth-child(odd) td,
-div[class*="prose"] table tr:nth-child(even) td,
-div table tbody tr:nth-child(odd) td,
-div table tr:nth-child(even) td,
-table tbody tr:nth-child(odd) td,
-table tr:nth-child(even) td {
-  background-color: #ffffff !important;
-}
-
-/* Even rows */
-.page-break table tbody tr:nth-child(even) td,
-.page-break table tr:nth-child(odd) td,
-div[class*="prose"] table tbody tr:nth-child(even) td,
-div[class*="prose"] table tr:nth-child(odd) td,
-div table tbody tr:nth-child(even) td,
-div table tr:nth-child(odd) td,
-table tbody tr:nth-child(even) td,
-table tr:nth-child(odd) td {
-  background-color: #f8fafc !important;
-}
-
-/* Table body cells */
-.page-break table td,
-.page-break table tbody td,
-div[class*="prose"] table td,
-div[class*="prose"] table tbody td,
-div table td,
-div table tbody td,
-table td,
-table tbody td {
-  padding: 0.875rem 1.25rem !important;
-  border: none !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  color: #334155 !important;
-}
-
-/* Last row no border */
-.page-break table tbody tr:last-child td,
-.page-break table tr:last-child td,
-div[class*="prose"] table tbody tr:last-child td,
-div[class*="prose"] table tr:last-child td,
-div table tbody tr:last-child td,
-div table tr:last-child td,
-table tbody tr:last-child td,
-table tr:last-child td {
-  border-bottom: none !important;
 }
 
 /* RTL List Support - Bulletproof */
@@ -644,11 +916,9 @@ ol[style*="text-align: left"] li {
 }
 
 @media print {
-  .page-break table,
-  div[class*="prose"] table,
-  div table,
-  table {
+  .page-break .proposal-prose table,
+  .page-break .premium-table,
+  .page-break table {
     box-shadow: none !important;
-    filter: none !important;
   }
 }

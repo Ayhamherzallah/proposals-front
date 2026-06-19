@@ -5,7 +5,7 @@
 export function StaticSlide({ index }: { index: number }) {
   // index is 2 through 13
   return (
-    <div className="w-[210mm] h-[297mm] relative bg-white overflow-hidden flex flex-col shadow-lg mb-8 print:shadow-none print:mb-0 page-break">
+    <div className="w-[210mm] h-[297mm] relative bg-white overflow-hidden flex flex-col shadow-[0_4px_24px_-8px_rgba(37,46,93,0.12)] mb-10 print:shadow-none print:mb-0 page-break">
       <img 
         src={`/assets/slides/${index}.png`} 
         alt={`Slide ${index}`}

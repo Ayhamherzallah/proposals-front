@@ -1,64 +1,27 @@
 import { ProposalContentPage } from '@/types';
+import { ProposalPageShell } from './ProposalPageShell';
 
 interface ProcessPageProps {
   page: ProposalContentPage;
+  pageNumber?: number;
+  totalPages?: number;
 }
 
-function PageHeader({ title }: { title: string }) {
-  // Detect if title contains Arabic characters
-  const isArabic = /[\u0600-\u06FF]/.test(title);
-  
-  return (
-    <div className="relative h-48 bg-gradient-to-r from-[#252E5D] to-[#0230F5] overflow-hidden flex-shrink-0">
-      <div className={`absolute top-0 ${isArabic ? 'left-0' : 'right-0'} h-full w-auto`}>
-        <img 
-          src="/assets/slides/headers_right_pattern.png" 
-          alt="" 
-          className={`h-full w-auto object-cover opacity-40 ${isArabic ? 'scale-x-[-1]' : ''}`}
-        />
-      </div>
-      <div className={`relative z-10 h-full flex flex-col justify-center px-10 ${isArabic ? 'text-right' : 'text-left'}`}>
-        <h1 className={`text-4xl font-bold text-white ${isArabic ? 'font-arabic' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>{title}</h1>
-      </div>
-    </div>
-  );
-}
-
-function PageFooter() {
-  return (
-    <div className="border-t border-gray-200 px-10 py-4 flex items-center justify-between text-xs flex-shrink-0">
-      <p className="text-gray-600">info@clicksdigitals.com</p>
-      <div className="flex items-center gap-2">
-        <img 
-          src="/assets/slides/footer_logo.png" 
-          alt="Clicks Digitals" 
-          className="h-6 object-contain"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
-          }}
-        />
-      </div>
-      <p className="text-gray-600">www.clicksdigitals.com</p>
-    </div>
-  );
-}
-
-export function ProcessPage({ page }: ProcessPageProps) {
-  // Detect if content contains Arabic
+export function ProcessPage({ page, pageNumber, totalPages }: ProcessPageProps) {
   const isArabic = /[\u0600-\u06FF]/.test(page.content || page.title);
-  
-  return (
-    <div className="w-[210mm] h-[297mm] bg-white flex flex-col page-break shadow-lg mb-8 print:shadow-none print:mb-0">
-      <PageHeader title={page.title} />
-      
-      <div className={`flex-1 px-10 py-8 overflow-hidden bg-gray-50 ${isArabic ? 'text-right' : ''}`} dir={isArabic ? 'rtl' : 'ltr'}>
-        <div 
-          className="process-display"
-          dangerouslySetInnerHTML={{ __html: page.content }}
-        />
-      </div>
 
-      <PageFooter />
-    </div>
+  return (
+    <ProposalPageShell
+      title={page.title}
+      pageNumber={pageNumber}
+      totalPages={totalPages}
+    >
+      <div
+        className="process-display h-full"
+        dir={isArabic ? 'rtl' : 'ltr'}
+        style={{ textAlign: isArabic ? 'right' : undefined }}
+        dangerouslySetInnerHTML={{ __html: page.content }}
+      />
+    </ProposalPageShell>
   );
 }

@@ -93,67 +93,77 @@ export function ProcessEditor({ content, onChange }: ProcessEditorProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {steps.map((step, index) => (
-        <div key={step.id} className="bg-blue-50 rounded-2xl p-8 border-2 border-blue-100 relative group">
-          {/* Drag Handle */}
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-move">
-            <GripVertical size={20} className="text-gray-400" />
-          </div>
-
-          <div className="flex gap-6">
-            {/* Number */}
-            <div className="flex-shrink-0">
-              <input
-                type="text"
-                value={step.number}
-                onChange={(e) => updateStep(step.id, 'number', e.target.value)}
-                className="w-24 text-6xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 outline-none transition-colors text-center"
-              />
+    <div className="h-full flex flex-col studio-artboard overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-8 py-8 space-y-4">
+        {steps.map((step) => (
+          <div
+            key={step.id}
+            className="rounded-xl border border-[#e2e8f0] bg-[#fafbfd] p-5 relative group hover:border-[#cbd5e1] hover:shadow-sm transition-all"
+          >
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity cursor-move">
+              <GripVertical size={16} className="text-[#94a3b8]" />
             </div>
 
-            {/* Content */}
-            <div className="flex-1 space-y-3">
-              <input
-                type="text"
-                value={step.title}
-                onChange={(e) => updateStep(step.id, 'title', e.target.value)}
-                className="w-full text-2xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-blue-300 focus:border-blue-500 outline-none transition-colors"
-                placeholder="Step Title"
-              />
-              
-              <textarea
-                value={step.description}
-                onChange={(e) => updateStep(step.id, 'description', e.target.value)}
-                className="w-full text-base text-gray-700 bg-transparent border-2 border-transparent hover:border-blue-200 focus:border-blue-400 outline-none transition-colors rounded-lg p-3 resize-none"
-                rows={3}
-                placeholder="Step description..."
-              />
+            <div className="flex gap-5 pl-4">
+              <div className="shrink-0 w-16">
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8] mb-1">No.</label>
+                <input
+                  type="text"
+                  value={step.number}
+                  onChange={(e) => updateStep(step.id, 'number', e.target.value)}
+                  className="w-full text-2xl font-bold text-[#252E5D] bg-transparent border-b border-transparent hover:border-[#dde3ed] focus:border-[#0230F5] outline-none transition-colors text-center"
+                />
+              </div>
+
+              <div className="flex-1 space-y-3 min-w-0">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8] mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={step.title}
+                    onChange={(e) => updateStep(step.id, 'title', e.target.value)}
+                    className="w-full text-lg font-semibold text-[#1e293b] bg-white border border-[#dde3ed] rounded-md px-3 py-2 outline-none focus:border-[#0230F5] transition-colors"
+                    placeholder="Step title"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8] mb-1">Description</label>
+                  <textarea
+                    value={step.description}
+                    onChange={(e) => updateStep(step.id, 'description', e.target.value)}
+                    className="w-full text-sm text-[#475569] bg-white border border-[#dde3ed] rounded-md px-3 py-2 outline-none focus:border-[#0230F5] transition-colors resize-y min-h-[80px]"
+                    rows={3}
+                    placeholder="Step description..."
+                  />
+                </div>
+              </div>
+
+              {steps.length > 1 && (
+                <button
+                  onClick={() => removeStep(step.id)}
+                  className="shrink-0 self-start h-8 w-8 rounded-md hover:bg-red-50 text-[#94a3b8] hover:text-red-600 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                  type="button"
+                  title="Remove step"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
-
-            {/* Delete Button */}
-            {steps.length > 1 && (
-              <button
-                onClick={() => removeStep(step.id)}
-                className="flex-shrink-0 h-10 w-10 rounded-lg hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
-                type="button"
-              >
-                <Trash2 size={18} />
-              </button>
-            )}
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      {/* Add Step Button */}
-      <button
-        onClick={addStep}
-        className="w-full py-4 border-2 border-dashed border-blue-300 rounded-2xl hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 text-blue-600 font-semibold"
-        type="button"
-      >
-        <Plus size={20} />
-        Add Step
-      </button>
+      <div className="shrink-0 px-8 py-4 border-t border-[#e2e8f0] bg-[#f8fafc]">
+        <button
+          onClick={addStep}
+          className="w-full py-3 border border-dashed border-[#cbd5e1] rounded-xl hover:border-[#0230F5] hover:bg-white transition-all flex items-center justify-center gap-2 text-sm font-medium text-[#64748b] hover:text-[#0230F5]"
+          type="button"
+        >
+          <Plus size={16} />
+          Add step
+        </button>
+      </div>
     </div>
   );
 }
