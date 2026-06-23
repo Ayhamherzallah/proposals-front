@@ -17,6 +17,16 @@ export function ProposalCover({ proposal }: { proposal: Proposal }) {
   const date = proposal.date || proposal.cover?.date || new Date().toLocaleDateString();
   const preparedBy = proposal.prepared_by || proposal.cover?.preparedBy || 'Clicks Digitals';
 
+  // Arabic must not be uppercased or letter-spaced (it breaks the script and
+  // ligatures). Latin keeps the refined small-caps eyebrow treatment.
+  const eyebrowCls = isArabic
+    ? 'font-arabic text-[12px] font-semibold tracking-normal'
+    : 'text-[10px] font-semibold uppercase tracking-[0.28em]';
+  const labelCls = isArabic
+    ? 'font-arabic text-[12px] font-semibold tracking-normal'
+    : 'text-[10px] font-bold uppercase tracking-wider';
+  const valueCls = isArabic ? 'font-arabic text-xl font-bold' : 'text-lg font-semibold';
+
   return (
     <div className="proposal-page w-[210mm] h-[297mm] relative bg-white overflow-hidden flex flex-col shadow-[0_12px_48px_rgba(37,46,93,0.14)] mb-8 print:shadow-none print:mb-0 page-break">
       <div className={`flex flex-1 min-h-0 ${isArabic ? 'flex-row-reverse' : ''}`}>
@@ -28,15 +38,15 @@ export function ProposalCover({ proposal }: { proposal: Proposal }) {
 
           <div className="relative z-10">
             <img src="/assets/slides/logo_white_top.png" alt="Clicks Digitals" className="h-32 object-contain mb-12" />
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/50 mb-3">
+            <p className={`text-white/50 mb-3 ${eyebrowCls}`}>
               {labels.eyebrow}
             </p>
-            <h1 className={`text-[2rem] font-bold text-white leading-[1.15] ${isArabic ? 'font-arabic text-right' : ''}`}>
+            <h1 className={`text-white leading-[1.25] ${isArabic ? 'font-arabic text-right text-[2.4rem] font-extrabold' : 'text-[2rem] font-bold leading-[1.15]'}`}>
               {isArabic ? 'عرض المشروع' : 'Project Proposal'}
             </h1>
           </div>
 
-          <div className={`relative z-10 space-y-1 text-white/70 text-[11px] ${isArabic ? 'text-right' : ''}`}>
+          <div className={`relative z-10 space-y-1 text-white/70 text-[11px] ${isArabic ? 'text-right' : ''}`} dir="ltr">
             <p>www.clicksdigitals.com</p>
             <p>info@clicksdigitals.com</p>
           </div>
@@ -47,10 +57,10 @@ export function ProposalCover({ proposal }: { proposal: Proposal }) {
           className="flex-1 flex flex-col justify-center px-12 py-10 relative bg-white"
           dir={isArabic ? 'rtl' : 'ltr'}
         >
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0230F5] mb-4">
+          <p className={`text-[#0230F5] mb-4 ${isArabic ? 'font-arabic text-[13px] font-bold tracking-normal' : 'text-[11px] font-bold uppercase tracking-[0.2em]'}`}>
             {labels.preparedFor}
           </p>
-          <h2 className={`text-[2.5rem] font-bold text-[#1a2347] leading-[1.1] mb-12 max-w-md ${isArabic ? 'font-arabic' : ''}`}>
+          <h2 className={`text-[#1a2347] mb-12 max-w-md ${isArabic ? 'font-arabic text-[2.75rem] font-extrabold leading-[1.3]' : 'text-[2.5rem] font-bold leading-[1.1]'}`}>
             {client}
           </h2>
 
@@ -58,22 +68,22 @@ export function ProposalCover({ proposal }: { proposal: Proposal }) {
             <div className={`flex items-start gap-4 pb-6 border-b border-[#e8edf5] ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
               <div className="w-1 self-stretch rounded-full bg-gradient-to-b from-[#252E5D] to-[#0230F5] shrink-0" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] mb-1">{labels.projectType}</p>
-                <p className={`text-lg font-semibold text-[#1e293b] ${isArabic ? 'font-arabic' : ''}`}>{projectType}</p>
+                <p className={`text-[#94a3b8] mb-1 ${labelCls}`}>{labels.projectType}</p>
+                <p className={`text-[#1e293b] ${valueCls}`}>{projectType}</p>
               </div>
             </div>
             <div className={`flex items-start gap-4 pb-6 border-b border-[#e8edf5] ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
               <div className="w-1 self-stretch rounded-full bg-gradient-to-b from-[#252E5D] to-[#0230F5] shrink-0" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] mb-1">{labels.date}</p>
-                <p className={`text-lg font-semibold text-[#1e293b] ${isArabic ? 'font-arabic' : ''}`}>{date}</p>
+                <p className={`text-[#94a3b8] mb-1 ${labelCls}`}>{labels.date}</p>
+                <p className={`text-[#1e293b] ${valueCls}`} dir={isArabic ? 'rtl' : 'ltr'}>{date}</p>
               </div>
             </div>
             <div className={`flex items-start gap-4 ${isArabic ? 'flex-row-reverse text-right' : ''}`}>
               <div className="w-1 self-stretch rounded-full bg-gradient-to-b from-[#252E5D] to-[#0230F5] shrink-0" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] mb-1">{labels.preparedBy}</p>
-                <p className={`text-lg font-semibold text-[#1e293b] ${isArabic ? 'font-arabic' : ''}`}>{preparedBy}</p>
+                <p className={`text-[#94a3b8] mb-1 ${labelCls}`}>{labels.preparedBy}</p>
+                <p className={`text-[#1e293b] ${valueCls}`}>{preparedBy}</p>
               </div>
             </div>
           </div>

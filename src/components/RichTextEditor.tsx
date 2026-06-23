@@ -12,6 +12,7 @@ import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import { FontSize } from '@/lib/tiptap-font-size';
+import { Fragment, Slice, type Node as PMNode } from '@tiptap/pm/model';
 import { TableContextBar } from '@/components/studio/TableContextBar';
 import {
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered,
@@ -19,12 +20,45 @@ import {
   Undo, Redo, Palette, Highlighter, AlignLeft, AlignRight,
   Minus, Plus,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
   editorKey?: string;
+}
+
+const ARABIC_RE = /[\u0600-\u06FF]/;
+
+// Tables are rendered/edited left-to-right so ProseMirror's (LTR-only) column
+// resizing works smoothly. For an RTL document we reverse the columns of any
+// pasted table so it keeps the SAME visual order as the user's source.
+function reverseTableColumns(node: PMNode): PMNode {
+  if (node.type.name === 'table') {
+    let hasSpan = false;
+    node.descendants((n) => {
+      if ((n.attrs?.colspan ?? 1) > 1 || (n.attrs?.rowspan ?? 1) > 1) hasSpan = true;
+    });
+    // Skip merged-cell tables to avoid corrupting the layout.
+    if (hasSpan) return node;
+
+    const rows: PMNode[] = [];
+    node.forEach((row) => {
+      const cells: PMNode[] = [];
+      row.forEach((cell) => cells.push(cell));
+      cells.reverse();
+      rows.push(row.copy(Fragment.fromArray(cells)));
+    });
+    return node.copy(Fragment.fromArray(rows));
+  }
+
+  if (node.childCount > 0) {
+    const children: PMNode[] = [];
+    node.forEach((child) => children.push(reverseTableColumns(child)));
+    return node.copy(Fragment.fromArray(children));
+  }
+
+  return node;
 }
 
 function ToolBtn({
@@ -69,8 +103,25 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
   const [tableCols, setTableCols] = useState(3);
   const [inTable, setInTable] = useState(false);
 
+  const isRtl = !!content && ARABIC_RE.test(content);
+  const isRtlRef = useRef(isRtl);
+  isRtlRef.current = isRtl;
+
   const editor = useEditor({
     immediatelyRender: false,
+    editorProps: {
+      transformPasted(slice) {
+        // Reverse table columns when the document OR the pasted content is
+        // Arabic, so an RTL table keeps the same visual order as the source
+        // (first column on the right) even on an otherwise-empty page.
+        const pastedText = slice.content.textBetween(0, slice.content.size, '\n', ' ');
+        const rtl = isRtlRef.current || ARABIC_RE.test(pastedText);
+        if (!rtl) return slice;
+        const children: PMNode[] = [];
+        slice.content.forEach((child) => children.push(reverseTableColumns(child)));
+        return new Slice(Fragment.fromArray(children), slice.openStart, slice.openEnd);
+      },
+    },
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -133,8 +184,6 @@ export function RichTextEditor({ content, onChange, editorKey }: RichTextEditorP
     setTableRows(3);
     setTableCols(3);
   };
-
-  const isRtl = content && /[\u0600-\u06FF]/.test(content);
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#e8ebf0]">

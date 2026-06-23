@@ -41,7 +41,9 @@ export function ProposalPageHeader({
           className="h-8 object-contain shrink-0"
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
-        <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-white/55">
+        <span
+          className={`text-white/55 ${isArabic ? 'font-arabic text-[12px] font-semibold tracking-normal' : 'text-[9px] font-semibold uppercase tracking-[0.28em]'}`}
+        >
           {isArabic ? 'عرض المشروع' : 'Project Proposal'}
         </span>
       </div>
@@ -51,7 +53,7 @@ export function ProposalPageHeader({
       <div className={`relative z-10 mt-4 flex items-end justify-between gap-6 ${isArabic ? 'flex-row-reverse' : ''}`}>
         <div className={isArabic ? 'text-right' : 'text-left'}>
           <h1
-            className={`text-[1.6rem] font-bold text-white leading-tight ${isArabic ? 'font-arabic' : ''}`}
+            className={`text-white ${isArabic ? 'font-arabic text-[1.7rem] font-extrabold leading-[1.5]' : 'text-[1.6rem] font-bold leading-tight'}`}
             dir={isArabic ? 'rtl' : 'ltr'}
           >
             {title}

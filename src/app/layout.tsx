@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic, Sora } from "next/font/google";
+import { Tajawal, Sora } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 
@@ -9,10 +9,10 @@ const sora = Sora({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-const arabic = IBM_Plex_Sans_Arabic({
-  variable: "--font-noto-arabic",
+const arabic = Tajawal({
+  variable: "--font-arabic",
   subsets: ["arabic"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "700", "800"],
 });
 
 export const metadata: Metadata = {
