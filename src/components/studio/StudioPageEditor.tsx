@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ProposalContentPage } from '@/types';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { ProcessEditor } from '@/components/ProcessEditor';
@@ -9,28 +9,38 @@ import { AIRequirementsGenerator } from '@/components/AIRequirementsGenerator';
 interface StudioPageEditorProps {
   page: ProposalContentPage;
   onTitleChange: (value: string) => void;
+  onTitleCommit?: () => void;
   onContentChange: (html: string) => void;
 }
 
-export function StudioPageEditor({ page, onTitleChange, onContentChange }: StudioPageEditorProps) {
-  // Local title state so typing never flickers while a content save re-renders
-  // the parent. Only reset when switching to a different page.
+export function StudioPageEditor({
+  page,
+  onTitleChange,
+  onTitleCommit,
+  onContentChange,
+}: StudioPageEditorProps) {
   const [title, setTitle] = useState(page.title);
+  const titleRef = useRef(title);
+  titleRef.current = title;
 
+  // Reset only when navigating to a different page.
   useEffect(() => {
     setTitle(page.title);
-    // Only reset when switching pages — never sync page.title on every parent
-    // re-render or stale API state will overwrite what the user is typing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page.id]);
 
-  const isProcess = page.type === 'process' || page.title.toLowerCase().includes('process');
+  const isProcess =
+    page.type === 'process' || title.toLowerCase().includes('process');
   const isRequirements =
-    page.title.toLowerCase().includes('requirement') || page.type === 'requirements';
+    title.toLowerCase().includes('requirement') || page.type === 'requirements';
 
   const handleTitleChange = (value: string) => {
     setTitle(value);
     onTitleChange(value);
+  };
+
+  const handleTitleBlur = () => {
+    onTitleChange(titleRef.current);
+    onTitleCommit?.();
   };
 
   return (
@@ -40,6 +50,7 @@ export function StudioPageEditor({ page, onTitleChange, onContentChange }: Studi
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={handleTitleBlur}
           className="flex-1 min-w-0 text-[15px] font-medium text-[#0f172a] bg-transparent border-none p-0 outline-none placeholder:text-[#94a3b8]"
           placeholder="Page title"
           spellCheck={false}

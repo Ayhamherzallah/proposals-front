@@ -37,6 +37,8 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
   const wasSyncingRef = useRef(false);
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const pendingValuesRef = useRef<Record<string, unknown>>({});
+  const saveGenerationRef = useRef<Record<string, number>>({});
+  const savingFieldRef = useRef<Record<string, boolean>>({});
   const inFlightSavesRef = useRef(0);
 
   useEffect(() => {
@@ -136,6 +138,50 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     }, 500);
   };
 
+  const persistPageField = async (
+    pageId: string,
+    field: 'title' | 'content' | 'isVisible'
+  ) => {
+    const key = `${pageId}:${field}`;
+
+    // Serialize saves per field so an older in-flight request can't win on the server.
+    if (savingFieldRef.current[key]) return;
+    savingFieldRef.current[key] = true;
+
+    const generationAtSave = saveGenerationRef.current[key] ?? 0;
+    const value = pendingValuesRef.current[key];
+    if (value === undefined) {
+      savingFieldRef.current[key] = false;
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (field === 'title') updates.title = value;
+    else if (field === 'content') updates.content = value;
+    else if (field === 'isVisible') updates.is_visible = value;
+
+    inFlightSavesRef.current += 1;
+    setIsSyncing(true);
+    try {
+      await updatePageApi(pageId, updates);
+    } catch (error) {
+      console.error('Failed to save page field:', field, error);
+      // Never reload the whole proposal here — that reverts in-progress edits.
+    } finally {
+      savingFieldRef.current[key] = false;
+      inFlightSavesRef.current -= 1;
+      if (inFlightSavesRef.current <= 0) {
+        inFlightSavesRef.current = 0;
+        setIsSyncing(false);
+      }
+
+      // User kept typing (or cleared the field) while this save was in flight.
+      if ((saveGenerationRef.current[key] ?? 0) !== generationAtSave) {
+        void persistPageField(pageId, field);
+      }
+    }
+  };
+
   const schedulePageSave = (
     pageId: string,
     field: 'title' | 'content' | 'isVisible',
@@ -144,37 +190,30 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     const key = `${pageId}:${field}`;
     if (saveTimersRef.current[key]) clearTimeout(saveTimersRef.current[key]);
 
-    saveTimersRef.current[key] = setTimeout(async () => {
+    if (delayMs === 0) {
+      void persistPageField(pageId, field);
+      return;
+    }
+
+    saveTimersRef.current[key] = setTimeout(() => {
       delete saveTimersRef.current[key];
-      const value = pendingValuesRef.current[key];
-      if (value === undefined) return;
-
-      const updates: Record<string, unknown> = {};
-      if (field === 'title') updates.title = value;
-      else if (field === 'content') updates.content = value;
-      else if (field === 'isVisible') updates.is_visible = value;
-
-      inFlightSavesRef.current += 1;
-      setIsSyncing(true);
-      try {
-        await updatePageApi(pageId, updates);
-      } catch (error) {
-        console.error('Failed to save page field:', field, error);
-        const fresh = await getProposal(id);
-        if (fresh) setProposal(fresh);
-      } finally {
-        inFlightSavesRef.current -= 1;
-        if (inFlightSavesRef.current <= 0) {
-          inFlightSavesRef.current = 0;
-          setIsSyncing(false);
-        }
-      }
+      void persistPageField(pageId, field);
     }, delayMs);
+  };
+
+  const flushPageSave = (pageId: string, field: 'title' | 'content') => {
+    const key = `${pageId}:${field}`;
+    if (saveTimersRef.current[key]) {
+      clearTimeout(saveTimersRef.current[key]);
+      delete saveTimersRef.current[key];
+    }
+    void persistPageField(pageId, field);
   };
 
   const updatePage = (pageId: string, field: string, value: unknown) => {
     const key = `${pageId}:${field}`;
     pendingValuesRef.current[key] = value;
+    saveGenerationRef.current[key] = (saveGenerationRef.current[key] ?? 0) + 1;
 
     // Functional update so concurrent title/content edits never clobber each other.
     setProposal((prev) => {
@@ -295,6 +334,7 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
               <StudioPageEditor
                 page={activePage}
                 onTitleChange={(value) => updatePage(activePage.id, 'title', value)}
+                onTitleCommit={() => flushPageSave(activePage.id, 'title')}
                 onContentChange={(html) => updatePage(activePage.id, 'content', html)}
               />
             )}
