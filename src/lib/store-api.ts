@@ -261,7 +261,6 @@ export function useProposals() {
   const updatePage = async (pageId: string, updates: Partial<any>) => {
     try {
       await proposalApi.updatePage(pageId, updates);
-      await loadProposals();
     } catch (err: any) {
       console.error('[Store] Failed to update page:', err);
       setError(err.message || 'Failed to update page');

@@ -35,6 +35,15 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
   const hasLoadedRef = useRef(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasSyncingRef = useRef(false);
+  const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const pendingValuesRef = useRef<Record<string, unknown>>({});
+  const inFlightSavesRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      Object.values(saveTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     const loadProposalDetails = async () => {
@@ -127,27 +136,63 @@ export default function Editor({ params }: { params: Promise<{ id: string }> }) 
     }, 500);
   };
 
-  const updatePage = async (pageId: string, field: string, value: unknown) => {
-    const updatedPages = proposal.pages.map((p) =>
-      p.id === pageId ? { ...p, [field]: value } : p
-    );
-    setProposal({ ...proposal, pages: updatedPages });
+  const schedulePageSave = (
+    pageId: string,
+    field: 'title' | 'content' | 'isVisible',
+    delayMs: number
+  ) => {
+    const key = `${pageId}:${field}`;
+    if (saveTimersRef.current[key]) clearTimeout(saveTimersRef.current[key]);
 
-    const updates: Record<string, unknown> = {};
-    if (field === 'title') updates.title = value;
-    else if (field === 'content') updates.content = value;
-    else if (field === 'isVisible') updates.is_visible = value;
+    saveTimersRef.current[key] = setTimeout(async () => {
+      delete saveTimersRef.current[key];
+      const value = pendingValuesRef.current[key];
+      if (value === undefined) return;
 
-    try {
+      const updates: Record<string, unknown> = {};
+      if (field === 'title') updates.title = value;
+      else if (field === 'content') updates.content = value;
+      else if (field === 'isVisible') updates.is_visible = value;
+
+      inFlightSavesRef.current += 1;
       setIsSyncing(true);
-      await updatePageApi(pageId, updates);
-      if (field !== 'title' && field !== 'content') {
-        await refreshProposal();
+      try {
+        await updatePageApi(pageId, updates);
+      } catch (error) {
+        console.error('Failed to save page field:', field, error);
+        const fresh = await getProposal(id);
+        if (fresh) setProposal(fresh);
+      } finally {
+        inFlightSavesRef.current -= 1;
+        if (inFlightSavesRef.current <= 0) {
+          inFlightSavesRef.current = 0;
+          setIsSyncing(false);
+        }
       }
-    } catch {
-      await refreshProposal();
-    } finally {
-      setIsSyncing(false);
+    }, delayMs);
+  };
+
+  const updatePage = (pageId: string, field: string, value: unknown) => {
+    const key = `${pageId}:${field}`;
+    pendingValuesRef.current[key] = value;
+
+    // Functional update so concurrent title/content edits never clobber each other.
+    setProposal((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((p) =>
+          p.id === pageId ? { ...p, [field]: value } : p
+        ),
+      };
+    });
+
+    if (field === 'title') {
+      schedulePageSave(pageId, 'title', 600);
+    } else if (field === 'content') {
+      schedulePageSave(pageId, 'content', 1000);
+    } else if (field === 'isVisible') {
+      schedulePageSave(pageId, 'isVisible', 0);
     }
   };
 
