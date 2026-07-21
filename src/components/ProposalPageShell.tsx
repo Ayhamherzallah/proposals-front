@@ -107,7 +107,7 @@ export function ProposalPageShell({
   return (
     <article className="proposal-page w-[210mm] h-[297mm] bg-white flex flex-col page-break shadow-[0_12px_48px_rgba(37,46,93,0.14)] mb-8 last:mb-0 print:shadow-none print:mb-0 mx-auto overflow-hidden">
       {showHeader && <ProposalPageHeader title={title} pageNumber={pageNumber} />}
-      <div className="flex-1 min-h-0 px-14 py-7 overflow-hidden">{children}</div>
+      <div className="flex-1 min-h-0 px-14 py-7 overflow-hidden flex flex-col">{children}</div>
       <ProposalPageFooter pageNumber={pageNumber} totalPages={totalPages} />
     </article>
   );

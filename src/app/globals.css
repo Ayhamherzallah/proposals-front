@@ -931,6 +931,20 @@
   color-adjust: exact;
 }
 
+/* Keep paginated preview content inside the safe area above the footer. */
+.proposal-page-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.page-break .proposal-page-content table,
+.page-break .proposal-page-content .premium-table {
+  max-width: 100%;
+}
+
 /* Content overflow handling */
 @media screen {
   .page-break {

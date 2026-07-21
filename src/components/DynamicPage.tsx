@@ -1,7 +1,7 @@
 'use client';
 
 import { ProposalContentPage } from '@/types';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ProcessPage } from './ProcessPage';
 import {
   ProposalPageShell,
@@ -15,6 +15,272 @@ interface DynamicPageProps {
   onPaginated?: (pageId: string, physicalPageCount: number) => void;
 }
 
+const SAFETY_MARGIN = 32;
+
+function isHeading(el: HTMLElement) {
+  return /^H[1-6]$/.test(el.tagName);
+}
+
+function getTableBodyRows(table: HTMLTableElement): HTMLTableRowElement[] {
+  const tbody = table.querySelector('tbody');
+  if (tbody) return Array.from(tbody.querySelectorAll('tr'));
+  const allRows = Array.from(table.querySelectorAll('tr'));
+  const thead = table.querySelector('thead');
+  if (thead) {
+    const headerCount = thead.querySelectorAll('tr').length;
+    return allRows.slice(headerCount);
+  }
+  if (allRows[0]?.querySelector('th')) return allRows.slice(1);
+  return allRows;
+}
+
+function buildPartialTable(
+  table: HTMLTableElement,
+  bodyRows: HTMLTableRowElement[]
+): HTMLTableElement {
+  const clone = table.cloneNode(false) as HTMLTableElement;
+  clone.className = table.className;
+
+  const colgroup = table.querySelector('colgroup');
+  if (colgroup) clone.appendChild(colgroup.cloneNode(true));
+
+  const thead = table.querySelector('thead');
+  if (thead) {
+    clone.appendChild(thead.cloneNode(true));
+  } else {
+    const allRows = Array.from(table.querySelectorAll('tr'));
+    const firstRow = allRows[0];
+    if (firstRow?.querySelector('th')) {
+      const headerSection = document.createElement('thead');
+      headerSection.appendChild(firstRow.cloneNode(true));
+      clone.appendChild(headerSection);
+    }
+  }
+
+  const tbody = document.createElement('tbody');
+  bodyRows.forEach((row) => tbody.appendChild(row.cloneNode(true)));
+  clone.appendChild(tbody);
+  return clone;
+}
+
+function measureContentHeight(container: HTMLElement) {
+  return container.scrollHeight;
+}
+
+function setContainerHtml(container: HTMLElement, elements: HTMLElement[]) {
+  container.innerHTML = elements.map((e) => e.outerHTML).join('');
+}
+
+function paginateHtmlContent(
+  html: string,
+  proseClasses: string,
+  maxHeight: number
+): string[] {
+  const sourceDiv = document.createElement('div');
+  sourceDiv.innerHTML = html;
+  sourceDiv.className = proseClasses;
+
+  const measureWrapper = document.createElement('div');
+  measureWrapper.className = 'page-break';
+  measureWrapper.style.cssText = `
+    position: absolute;
+    visibility: hidden;
+    top: 0;
+    left: 0;
+    width: 210mm;
+    padding: 28px 56px;
+    box-sizing: border-box;
+  `;
+
+  const measureContainer = document.createElement('div');
+  measureContainer.className = proseClasses;
+  measureWrapper.appendChild(measureContainer);
+  document.body.appendChild(measureWrapper);
+
+  const chunks: string[] = [];
+  const queue = Array.from(sourceDiv.children) as HTMLElement[];
+
+  const fitsInPage = (elements: HTMLElement[]) => {
+    setContainerHtml(measureContainer, elements);
+    return measureContentHeight(measureContainer) <= maxHeight;
+  };
+
+  const trimPageUntilFits = (pageElements: HTMLElement[], elementQueue: HTMLElement[]) => {
+    while (pageElements.length > 0 && !fitsInPage(pageElements)) {
+      const last = pageElements.pop();
+      if (last) elementQueue.unshift(last);
+    }
+  };
+
+  const splitTableOntoPage = (
+    table: HTMLTableElement,
+    pageElements: HTMLElement[],
+    elementQueue: HTMLElement[]
+  ): boolean => {
+    const bodyRows = getTableBodyRows(table);
+    if (bodyRows.length === 0) {
+      pageElements.push(table.cloneNode(true) as HTMLTableElement);
+      elementQueue.shift();
+      return true;
+    }
+
+    let splitIndex = 0;
+    for (let i = 0; i < bodyRows.length; i++) {
+      const candidate = buildPartialTable(table, bodyRows.slice(0, i + 1));
+      setContainerHtml(measureContainer, [...pageElements, candidate]);
+      if (measureContentHeight(measureContainer) <= maxHeight) {
+        splitIndex = i + 1;
+      } else {
+        break;
+      }
+    }
+
+    if (splitIndex === 0) {
+      // At least one row must appear; put the table on the next page instead.
+      if (pageElements.length > 0) return false;
+      splitIndex = 1;
+    }
+
+    pageElements.push(buildPartialTable(table, bodyRows.slice(0, splitIndex)));
+
+    if (splitIndex < bodyRows.length) {
+      elementQueue[0] = buildPartialTable(table, bodyRows.slice(splitIndex));
+    } else {
+      elementQueue.shift();
+    }
+    return true;
+  };
+
+  while (queue.length > 0) {
+    const pageElements: HTMLElement[] = [];
+
+    while (queue.length > 0) {
+      const el = queue[0];
+      const candidate = [...pageElements, el];
+
+      if (fitsInPage(candidate)) {
+        if (isHeading(el) && queue.length > 1 && queue[1].tagName === 'TABLE') {
+          const withTable = [...pageElements, el, queue[1]];
+          if (fitsInPage(withTable)) {
+            pageElements.push(el);
+            pageElements.push(queue[1]);
+            queue.shift();
+            queue.shift();
+            continue;
+          }
+          if (pageElements.length > 0) break;
+        }
+
+        if (isHeading(el) && queue.length > 1 && queue[1].tagName !== 'TABLE') {
+          const nextEl = queue[1];
+          let probe: HTMLElement;
+          if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
+            probe = nextEl.cloneNode(false) as HTMLElement;
+            if (nextEl.children[0]) {
+              probe.appendChild(nextEl.children[0].cloneNode(true));
+            }
+          } else {
+            probe = nextEl.cloneNode(true) as HTMLElement;
+          }
+          setContainerHtml(measureContainer, [...pageElements, el, probe]);
+          const probeFits = measureContentHeight(measureContainer) <= maxHeight;
+          if (!probeFits && pageElements.length > 0) break;
+        }
+
+        pageElements.push(el);
+        queue.shift();
+        continue;
+      }
+
+      // Doesn't fit — try splitting lists
+      if ((el.tagName === 'UL' || el.tagName === 'OL') && el.children.length > 0) {
+        const listItems = Array.from(el.children);
+        let splitIndex = 0;
+
+        for (let i = 0; i < listItems.length; i++) {
+          const partialList = el.cloneNode(false) as HTMLElement;
+          for (let j = 0; j <= i; j++) {
+            partialList.appendChild(listItems[j].cloneNode(true));
+          }
+          setContainerHtml(measureContainer, [...pageElements, partialList]);
+          if (measureContentHeight(measureContainer) <= maxHeight) {
+            splitIndex = i + 1;
+          } else {
+            break;
+          }
+        }
+
+        if (splitIndex > 0) {
+          const isOrdered = el.tagName === 'OL';
+          const baseOffset = isOrdered
+            ? parseInt(el.getAttribute('data-start-offset') || '0', 10)
+            : 0;
+
+          const finalPartial = el.cloneNode(false) as HTMLElement;
+          if (isOrdered) {
+            finalPartial.style.counterReset = `proposal-item ${baseOffset}`;
+          }
+          for (let i = 0; i < splitIndex; i++) {
+            finalPartial.appendChild(listItems[i].cloneNode(true));
+          }
+          pageElements.push(finalPartial);
+
+          const remainingList = el.cloneNode(false) as HTMLElement;
+          if (isOrdered) {
+            const nextOffset = baseOffset + splitIndex;
+            remainingList.style.counterReset = `proposal-item ${nextOffset}`;
+            remainingList.setAttribute('data-start-offset', String(nextOffset));
+          }
+          for (let i = splitIndex; i < listItems.length; i++) {
+            remainingList.appendChild(listItems[i].cloneNode(true));
+          }
+          queue[0] = remainingList;
+          break;
+        }
+      }
+
+      if (el.tagName === 'TABLE') {
+        if (pageElements.length > 0) break;
+        if (splitTableOntoPage(el as HTMLTableElement, pageElements, queue)) break;
+        continue;
+      }
+
+      if (pageElements.length > 0) break;
+
+      // Single oversized block on an empty page — push to next page via row split or force one element
+      if (el.tagName === 'TABLE') {
+        splitTableOntoPage(el as HTMLTableElement, pageElements, queue);
+      } else {
+        pageElements.push(el);
+        queue.shift();
+      }
+      break;
+    }
+
+    trimPageUntilFits(pageElements, queue);
+
+    if (pageElements.length === 0 && queue.length > 0) {
+      const el = queue[0];
+      if (el.tagName === 'TABLE') {
+        splitTableOntoPage(el as HTMLTableElement, pageElements, queue);
+        trimPageUntilFits(pageElements, queue);
+      } else {
+        pageElements.push(el);
+        queue.shift();
+      }
+    }
+
+    if (pageElements.length > 0) {
+      chunks.push(pageElements.map((e) => e.outerHTML).join(''));
+    } else {
+      break;
+    }
+  }
+
+  document.body.removeChild(measureWrapper);
+  return chunks.length > 0 ? chunks : [html];
+}
+
 export function DynamicPage({ page, startPageNumber, totalPages, onPaginated }: DynamicPageProps) {
   if (page.type === 'process' || page.title.toLowerCase().includes('process')) {
     return (
@@ -26,295 +292,58 @@ export function DynamicPage({ page, startPageNumber, totalPages, onPaginated }: 
     );
   }
 
-  const [contentChunks, setContentChunks] = useState<string[]>([page.content]);
+  const [contentChunks, setContentChunks] = useState<string[] | null>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const proseClasses = proposalProseClasses;
 
-  useEffect(() => {
-    if (measureRef.current) {
-      const sourceDiv = document.createElement('div');
-      sourceDiv.innerHTML = page.content;
-      sourceDiv.className = proseClasses;
-      sourceDiv.style.cssText = `
-        position: absolute;
-        visibility: hidden;
-        width: 210mm;
-        padding: 0 56px;
-        box-sizing: border-box;
-      `;
-      document.body.appendChild(sourceDiv);
+  const runPagination = useCallback(() => {
+    const contentWrapper = measureRef.current?.parentElement as HTMLElement | null;
+    if (!contentWrapper) return;
 
-      // Style helper used so every off-screen measurement matches the real page.
-      // Many proposal styles (table padding, gradients, etc.) are scoped to the
-      // `.page-break` class, so measurements MUST happen inside that scope or the
-      // computed heights (especially for tables) won't match the rendered output.
-      const makeMeasureNode = () => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'page-break';
-        wrapper.style.cssText = `
-          position: absolute;
-          visibility: hidden;
-          top: 0;
-          left: 0;
-          width: 210mm;
-        `;
-        const inner = document.createElement('div');
-        inner.className = proseClasses;
-        inner.style.cssText = `
-          width: 210mm;
-          padding: 0 56px;
-          box-sizing: border-box;
-        `;
-        wrapper.appendChild(inner);
-        return { wrapper, inner };
-      };
+    const cs = getComputedStyle(contentWrapper);
+    const padY =
+      parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
+    const usable = contentWrapper.clientHeight - padY - SAFETY_MARGIN;
+    if (usable < 200) return;
 
-      // Measure the REAL available content height from the live A4 page so
-      // pagination fills the page right down to the footer regardless of how
-      // tall the header/footer are. measureRef is on the prose div whose
-      // parent is the page's flex-1 content area.
-      const contentWrapper = measureRef.current.parentElement as HTMLElement | null;
-      let availableHeight = 820;
-      if (contentWrapper) {
-        const cs = getComputedStyle(contentWrapper);
-        const padY =
-          parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
-        const usable = contentWrapper.clientHeight - padY;
-        if (usable > 200) availableHeight = usable;
-      }
-      // Leave a small, even breathing margin above the footer.
-      const MAX_HEIGHT_FIRST = Math.round(availableHeight - 8);
-      const MAX_HEIGHT_STD = Math.round(availableHeight - 8);
-
-      const { wrapper: measureWrapper, inner: measureContainer } = makeMeasureNode();
-      document.body.appendChild(measureWrapper);
-
-      const chunks: string[] = [];
-      const queue = Array.from(sourceDiv.children) as HTMLElement[];
-
-      const isHeading = (el: HTMLElement) => /^H[1-6]$/.test(el.tagName);
-
-      while (queue.length > 0) {
-        measureContainer.innerHTML = '';
-        const pageElements: HTMLElement[] = [];
-        let contentAdded = false;
-
-        const CURRENT_MAX_HEIGHT = chunks.length === 0 ? MAX_HEIGHT_FIRST : MAX_HEIGHT_STD;
-
-        while (queue.length > 0) {
-          const el = queue[0];
-          const clone = el.cloneNode(true) as HTMLElement;
-          measureContainer.appendChild(clone);
-
-          const fits = measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT;
-
-          if (isHeading(el) && queue.length > 1 && queue[1].tagName === 'TABLE') {
-            const tableEl = queue[1];
-            const tableClone = tableEl.cloneNode(true) as HTMLElement;
-            measureContainer.appendChild(tableClone);
-            const combinedFits = measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT;
-
-            if (combinedFits) {
-              pageElements.push(el);
-              pageElements.push(tableEl);
-              queue.shift();
-              queue.shift();
-              contentAdded = true;
-              continue;
-            } else {
-              measureContainer.removeChild(tableClone);
-              measureContainer.removeChild(clone);
-
-              if (pageElements.length > 0) {
-                break;
-              }
-
-              pageElements.push(el);
-              queue.shift();
-              measureContainer.appendChild(clone);
-
-              const usedHeight = measureContainer.scrollHeight;
-              const remainingHeight = CURRENT_MAX_HEIGHT - usedHeight - 20;
-
-              const { wrapper: tempWrapper, inner: tempContainer } = makeMeasureNode();
-              document.body.appendChild(tempWrapper);
-              tempContainer.appendChild(tableEl.cloneNode(true));
-              const naturalTableHeight = tempContainer.scrollHeight;
-              document.body.removeChild(tempWrapper);
-
-              const scaleFactor = Math.min(1, remainingHeight / naturalTableHeight);
-
-              const wrapper = document.createElement('div');
-              wrapper.style.width = '100%';
-              wrapper.style.height = `${naturalTableHeight * scaleFactor}px`;
-              wrapper.style.overflow = 'hidden';
-
-              const scaledTable = tableEl.cloneNode(true) as HTMLElement;
-              scaledTable.style.transform = `scale(${scaleFactor})`;
-              scaledTable.style.transformOrigin = 'top left';
-              scaledTable.style.width = `${100 / scaleFactor}%`;
-
-              wrapper.appendChild(scaledTable);
-              pageElements.push(wrapper);
-              queue.shift();
-              contentAdded = true;
-              break;
-            }
-          }
-
-          if (el.tagName === 'TABLE') {
-            const currentHeight = measureContainer.scrollHeight;
-            if (fits) {
-              pageElements.push(el);
-              queue.shift();
-              contentAdded = true;
-              continue;
-            } else {
-              measureContainer.removeChild(clone);
-
-              if (pageElements.length > 0) {
-                break;
-              }
-
-              const scaleFactor = Math.min(1, (CURRENT_MAX_HEIGHT - 20) / currentHeight);
-
-              const wrapper = document.createElement('div');
-              wrapper.style.width = '100%';
-              wrapper.style.height = `${currentHeight * scaleFactor}px`;
-              wrapper.style.overflow = 'hidden';
-
-              const scaledTable = el.cloneNode(true) as HTMLElement;
-              scaledTable.style.transform = `scale(${scaleFactor})`;
-              scaledTable.style.transformOrigin = 'top left';
-              scaledTable.style.width = `${100 / scaleFactor}%`;
-
-              wrapper.appendChild(scaledTable);
-              pageElements.push(wrapper);
-              queue.shift();
-              contentAdded = true;
-              break;
-            }
-          }
-
-          if (fits && isHeading(el) && queue.length > 1) {
-            const nextEl = queue[1];
-            if (nextEl.tagName !== 'TABLE') {
-              // Avoid an orphan heading at the very bottom, but DON'T require the
-              // heading's entire following block to fit (that leaves big gaps).
-              // Only require the heading + the first line/item to fit; long lists
-              // and paragraphs then flow/split right under the heading.
-              let probe: HTMLElement;
-              if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
-                probe = nextEl.cloneNode(false) as HTMLElement;
-                if (nextEl.children[0]) {
-                  probe.appendChild(nextEl.children[0].cloneNode(true));
-                }
-              } else {
-                probe = nextEl.cloneNode(true) as HTMLElement;
-              }
-              measureContainer.appendChild(probe);
-              const probeFits = measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT;
-              if (measureContainer.contains(probe)) measureContainer.removeChild(probe);
-              if (!probeFits && pageElements.length > 0) {
-                measureContainer.removeChild(clone);
-                break;
-              }
-            }
-          }
-
-          if (fits) {
-            pageElements.push(el);
-            queue.shift();
-            contentAdded = true;
-          } else {
-            measureContainer.removeChild(clone);
-
-            const isList = el.tagName === 'UL' || el.tagName === 'OL';
-            if (isList && el.children.length > 0) {
-              const partialList = el.cloneNode(false) as HTMLElement;
-              measureContainer.appendChild(partialList);
-              const listItems = Array.from(el.children);
-              let splitIndex = 0;
-              let itemsAdded = false;
-
-              for (let i = 0; i < listItems.length; i++) {
-                const item = listItems[i].cloneNode(true) as HTMLElement;
-                partialList.appendChild(item);
-                if (measureContainer.scrollHeight <= CURRENT_MAX_HEIGHT) {
-                  splitIndex = i + 1;
-                  itemsAdded = true;
-                } else {
-                  partialList.removeChild(item);
-                  break;
-                }
-              }
-
-              if (itemsAdded) {
-                // For ordered lists, keep numbering continuous across page
-                // breaks by carrying a running offset.
-                const isOrdered = el.tagName === 'OL';
-                const baseOffset = isOrdered
-                  ? parseInt(el.getAttribute('data-start-offset') || '0', 10)
-                  : 0;
-
-                const finalPartial = el.cloneNode(false) as HTMLElement;
-                if (isOrdered) {
-                  finalPartial.style.counterReset = `proposal-item ${baseOffset}`;
-                }
-                for (let i = 0; i < splitIndex; i++) {
-                  finalPartial.appendChild(listItems[i].cloneNode(true));
-                }
-                pageElements.push(finalPartial);
-                contentAdded = true;
-
-                const remainingList = el.cloneNode(false) as HTMLElement;
-                if (isOrdered) {
-                  const nextOffset = baseOffset + splitIndex;
-                  remainingList.style.counterReset = `proposal-item ${nextOffset}`;
-                  remainingList.setAttribute('data-start-offset', String(nextOffset));
-                }
-                for (let i = splitIndex; i < listItems.length; i++) {
-                  remainingList.appendChild(listItems[i].cloneNode(true));
-                }
-                queue[0] = remainingList;
-                break;
-              } else {
-                measureContainer.removeChild(partialList);
-              }
-            }
-
-            if (!contentAdded) {
-              if (pageElements.length === 0) {
-                pageElements.push(el);
-                queue.shift();
-              }
-            }
-            break;
-          }
-        }
-
-        if (pageElements.length > 0) {
-          chunks.push(pageElements.map((e) => e.outerHTML).join(''));
-        } else {
-          break;
-        }
-      }
-
-      document.body.removeChild(sourceDiv);
-      document.body.removeChild(measureWrapper);
-
-      const finalChunks = chunks.length > 0 ? chunks : [page.content];
-      setContentChunks(finalChunks);
-      onPaginated?.(page.id, finalChunks.length);
-    }
+    const maxHeight = Math.round(usable);
+    const chunks = paginateHtmlContent(page.content, proseClasses, maxHeight);
+    setContentChunks(chunks);
+    onPaginated?.(page.id, chunks.length);
   }, [page.content, page.id, proseClasses, onPaginated]);
+
+  useLayoutEffect(() => {
+    runPagination();
+  }, [runPagination]);
+
+  useEffect(() => {
+    const wrapper = measureRef.current?.parentElement;
+    if (!wrapper) return;
+
+    const observer = new ResizeObserver(() => {
+      runPagination();
+    });
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [runPagination, contentChunks]);
+
+  if (contentChunks === null) {
+    return (
+      <ProposalPageShell
+        title={page.title}
+        pageNumber={startPageNumber}
+        totalPages={totalPages}
+      >
+        <div ref={measureRef} className={`${proseClasses} proposal-page-content`} aria-hidden />
+      </ProposalPageShell>
+    );
+  }
 
   return (
     <>
       {contentChunks.map((chunk, index) => {
         const pageNumber =
           startPageNumber !== undefined ? startPageNumber + index : undefined;
-
         const chunkIsArabic = /[\u0600-\u06FF]/.test(chunk);
 
         return (
@@ -326,12 +355,9 @@ export function DynamicPage({ page, startPageNumber, totalPages, onPaginated }: 
           >
             <div
               ref={index === 0 ? measureRef : null}
-              className={proseClasses}
+              className={`${proseClasses} proposal-page-content`}
               dir={chunkIsArabic ? 'rtl' : undefined}
-              style={{
-                textAlign: chunkIsArabic ? 'right' : undefined,
-                height: '100%',
-              }}
+              style={{ textAlign: chunkIsArabic ? 'right' : undefined }}
               dangerouslySetInnerHTML={{ __html: chunk }}
             />
           </ProposalPageShell>
