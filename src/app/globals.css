@@ -931,12 +931,12 @@
   color-adjust: exact;
 }
 
-/* Keep paginated preview content inside the safe area above the footer. */
+/* Paginated preview content — height is controlled by pagination, not clipping. */
 .proposal-page-content {
   flex: 1 1 auto;
   min-height: 0;
   max-height: 100%;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 

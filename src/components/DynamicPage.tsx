@@ -15,7 +15,8 @@ interface DynamicPageProps {
   onPaginated?: (pageId: string, physicalPageCount: number) => void;
 }
 
-const SAFETY_MARGIN = 32;
+const BASE_SAFETY_MARGIN = 40;
+const MAX_PENALTY_ITERATIONS = 20;
 
 function isHeading(el: HTMLElement) {
   return /^H[1-6]$/.test(el.tagName);
@@ -63,47 +64,64 @@ function buildPartialTable(
   return clone;
 }
 
-function measureContentHeight(container: HTMLElement) {
-  return container.scrollHeight;
-}
-
 function setContainerHtml(container: HTMLElement, elements: HTMLElement[]) {
   container.innerHTML = elements.map((e) => e.outerHTML).join('');
 }
 
-function paginateHtmlContent(
-  html: string,
+function createMeasureContainer(
   proseClasses: string,
-  maxHeight: number
-): string[] {
-  const sourceDiv = document.createElement('div');
-  sourceDiv.innerHTML = html;
-  sourceDiv.className = proseClasses;
-
+  contentWidth: number,
+  isRtl: boolean
+) {
   const measureWrapper = document.createElement('div');
   measureWrapper.className = 'page-break';
   measureWrapper.style.cssText = `
     position: absolute;
     visibility: hidden;
     top: 0;
-    left: 0;
-    width: 210mm;
-    padding: 28px 56px;
+    left: -99999px;
+    width: ${contentWidth}px;
     box-sizing: border-box;
   `;
 
   const measureContainer = document.createElement('div');
-  measureContainer.className = proseClasses;
+  measureContainer.className = `${proseClasses} proposal-page-content`;
+  if (isRtl) {
+    measureContainer.setAttribute('dir', 'rtl');
+    measureContainer.style.textAlign = 'right';
+  }
   measureWrapper.appendChild(measureContainer);
   document.body.appendChild(measureWrapper);
+
+  return { measureWrapper, measureContainer };
+}
+
+function paginateHtmlContent(
+  html: string,
+  proseClasses: string,
+  maxHeight: number,
+  contentWidth: number,
+  isRtl: boolean
+): string[] {
+  const sourceDiv = document.createElement('div');
+  sourceDiv.innerHTML = html;
+
+  const { measureWrapper, measureContainer } = createMeasureContainer(
+    proseClasses,
+    contentWidth,
+    isRtl
+  );
 
   const chunks: string[] = [];
   const queue = Array.from(sourceDiv.children) as HTMLElement[];
 
-  const fitsInPage = (elements: HTMLElement[]) => {
+  const contentHeight = (elements: HTMLElement[]) => {
     setContainerHtml(measureContainer, elements);
-    return measureContentHeight(measureContainer) <= maxHeight;
+    return measureContainer.scrollHeight;
   };
+
+  const fitsInPage = (elements: HTMLElement[]) =>
+    contentHeight(elements) <= maxHeight;
 
   const trimPageUntilFits = (pageElements: HTMLElement[], elementQueue: HTMLElement[]) => {
     while (pageElements.length > 0 && !fitsInPage(pageElements)) {
@@ -127,8 +145,7 @@ function paginateHtmlContent(
     let splitIndex = 0;
     for (let i = 0; i < bodyRows.length; i++) {
       const candidate = buildPartialTable(table, bodyRows.slice(0, i + 1));
-      setContainerHtml(measureContainer, [...pageElements, candidate]);
-      if (measureContentHeight(measureContainer) <= maxHeight) {
+      if (contentHeight([...pageElements, candidate]) <= maxHeight) {
         splitIndex = i + 1;
       } else {
         break;
@@ -136,7 +153,6 @@ function paginateHtmlContent(
     }
 
     if (splitIndex === 0) {
-      // At least one row must appear; put the table on the next page instead.
       if (pageElements.length > 0) return false;
       splitIndex = 1;
     }
@@ -145,6 +161,66 @@ function paginateHtmlContent(
 
     if (splitIndex < bodyRows.length) {
       elementQueue[0] = buildPartialTable(table, bodyRows.slice(splitIndex));
+    } else {
+      elementQueue.shift();
+    }
+    return true;
+  };
+
+  const splitListOntoPage = (
+    list: HTMLElement,
+    pageElements: HTMLElement[],
+    elementQueue: HTMLElement[]
+  ): boolean => {
+    const listItems = Array.from(list.children);
+    if (listItems.length === 0) {
+      elementQueue.shift();
+      return true;
+    }
+
+    let splitIndex = 0;
+    for (let i = 0; i < listItems.length; i++) {
+      const partialList = list.cloneNode(false) as HTMLElement;
+      for (let j = 0; j <= i; j++) {
+        partialList.appendChild(listItems[j].cloneNode(true));
+      }
+      if (contentHeight([...pageElements, partialList]) <= maxHeight) {
+        splitIndex = i + 1;
+      } else {
+        break;
+      }
+    }
+
+    if (splitIndex === 0) {
+      if (pageElements.length > 0) return false;
+      splitIndex = 1;
+    }
+
+    const isOrdered = list.tagName === 'OL';
+    const baseOffset = isOrdered
+      ? parseInt(list.getAttribute('data-start-offset') || '0', 10)
+      : 0;
+
+    const finalPartial = list.cloneNode(false) as HTMLElement;
+    if (isOrdered) {
+      finalPartial.style.counterReset = `proposal-item ${baseOffset}`;
+    }
+    for (let i = 0; i < splitIndex; i++) {
+      finalPartial.appendChild(listItems[i].cloneNode(true));
+    }
+    pageElements.push(finalPartial);
+
+    if (splitIndex < listItems.length) {
+      const remainingList = list.cloneNode(false) as HTMLElement;
+      if (isOrdered) {
+        const nextOffset = baseOffset + splitIndex;
+        remainingList.style.counterReset = `proposal-item ${nextOffset}`;
+        remainingList.setAttribute('data-start-offset', String(nextOffset));
+      }
+      for (let i = splitIndex; i < listItems.length; i++) {
+        remainingList.appendChild(listItems[i].cloneNode(true));
+      }
+      elementQueue[0] = remainingList;
     } else {
       elementQueue.shift();
     }
@@ -182,9 +258,9 @@ function paginateHtmlContent(
           } else {
             probe = nextEl.cloneNode(true) as HTMLElement;
           }
-          setContainerHtml(measureContainer, [...pageElements, el, probe]);
-          const probeFits = measureContentHeight(measureContainer) <= maxHeight;
-          if (!probeFits && pageElements.length > 0) break;
+          if (contentHeight([...pageElements, el, probe]) > maxHeight && pageElements.length > 0) {
+            break;
+          }
         }
 
         pageElements.push(el);
@@ -192,51 +268,10 @@ function paginateHtmlContent(
         continue;
       }
 
-      // Doesn't fit — try splitting lists
       if ((el.tagName === 'UL' || el.tagName === 'OL') && el.children.length > 0) {
-        const listItems = Array.from(el.children);
-        let splitIndex = 0;
-
-        for (let i = 0; i < listItems.length; i++) {
-          const partialList = el.cloneNode(false) as HTMLElement;
-          for (let j = 0; j <= i; j++) {
-            partialList.appendChild(listItems[j].cloneNode(true));
-          }
-          setContainerHtml(measureContainer, [...pageElements, partialList]);
-          if (measureContentHeight(measureContainer) <= maxHeight) {
-            splitIndex = i + 1;
-          } else {
-            break;
-          }
-        }
-
-        if (splitIndex > 0) {
-          const isOrdered = el.tagName === 'OL';
-          const baseOffset = isOrdered
-            ? parseInt(el.getAttribute('data-start-offset') || '0', 10)
-            : 0;
-
-          const finalPartial = el.cloneNode(false) as HTMLElement;
-          if (isOrdered) {
-            finalPartial.style.counterReset = `proposal-item ${baseOffset}`;
-          }
-          for (let i = 0; i < splitIndex; i++) {
-            finalPartial.appendChild(listItems[i].cloneNode(true));
-          }
-          pageElements.push(finalPartial);
-
-          const remainingList = el.cloneNode(false) as HTMLElement;
-          if (isOrdered) {
-            const nextOffset = baseOffset + splitIndex;
-            remainingList.style.counterReset = `proposal-item ${nextOffset}`;
-            remainingList.setAttribute('data-start-offset', String(nextOffset));
-          }
-          for (let i = splitIndex; i < listItems.length; i++) {
-            remainingList.appendChild(listItems[i].cloneNode(true));
-          }
-          queue[0] = remainingList;
-          break;
-        }
+        if (splitListOntoPage(el, pageElements, queue)) break;
+        if (pageElements.length > 0) break;
+        continue;
       }
 
       if (el.tagName === 'TABLE') {
@@ -247,13 +282,8 @@ function paginateHtmlContent(
 
       if (pageElements.length > 0) break;
 
-      // Single oversized block on an empty page — push to next page via row split or force one element
-      if (el.tagName === 'TABLE') {
-        splitTableOntoPage(el as HTMLTableElement, pageElements, queue);
-      } else {
-        pageElements.push(el);
-        queue.shift();
-      }
+      pageElements.push(el);
+      queue.shift();
       break;
     }
 
@@ -263,11 +293,13 @@ function paginateHtmlContent(
       const el = queue[0];
       if (el.tagName === 'TABLE') {
         splitTableOntoPage(el as HTMLTableElement, pageElements, queue);
-        trimPageUntilFits(pageElements, queue);
+      } else if (el.tagName === 'UL' || el.tagName === 'OL') {
+        splitListOntoPage(el, pageElements, queue);
       } else {
         pageElements.push(el);
         queue.shift();
       }
+      trimPageUntilFits(pageElements, queue);
     }
 
     if (pageElements.length > 0) {
@@ -279,6 +311,15 @@ function paginateHtmlContent(
 
   document.body.removeChild(measureWrapper);
   return chunks.length > 0 ? chunks : [html];
+}
+
+function measurePageOverflow(el: HTMLElement) {
+  const wrapper = el.parentElement;
+  if (!wrapper) return 0;
+  const cs = getComputedStyle(wrapper);
+  const padY = parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
+  const limit = wrapper.clientHeight - padY;
+  return Math.max(0, el.scrollHeight - limit);
 }
 
 export function DynamicPage({ page, startPageNumber, totalPages, onPaginated }: DynamicPageProps) {
@@ -293,34 +334,75 @@ export function DynamicPage({ page, startPageNumber, totalPages, onPaginated }: 
   }
 
   const [contentChunks, setContentChunks] = useState<string[] | null>(null);
+  const [heightPenalty, setHeightPenalty] = useState(0);
   const measureRef = useRef<HTMLDivElement>(null);
+  const chunkRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const penaltyIterationsRef = useRef(0);
   const proseClasses = proposalProseClasses;
+  const isRtl = /[\u0600-\u06FF]/.test(page.content);
+
+  useEffect(() => {
+    setHeightPenalty(0);
+    setContentChunks(null);
+    penaltyIterationsRef.current = 0;
+    chunkRefs.current = [];
+  }, [page.content, page.id]);
 
   const runPagination = useCallback(() => {
     const contentWrapper = measureRef.current?.parentElement as HTMLElement | null;
     if (!contentWrapper) return;
 
     const cs = getComputedStyle(contentWrapper);
+    const padX =
+      parseFloat(cs.paddingLeft || '0') + parseFloat(cs.paddingRight || '0');
     const padY =
       parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
-    const usable = contentWrapper.clientHeight - padY - SAFETY_MARGIN;
-    if (usable < 200) return;
+    const contentWidth = Math.round(contentWrapper.clientWidth - padX);
+    const usable =
+      contentWrapper.clientHeight - padY - BASE_SAFETY_MARGIN - heightPenalty;
+
+    if (usable < 200 || contentWidth < 100) return;
 
     const maxHeight = Math.round(usable);
-    const chunks = paginateHtmlContent(page.content, proseClasses, maxHeight);
+    const chunks = paginateHtmlContent(
+      page.content,
+      proseClasses,
+      maxHeight,
+      contentWidth,
+      isRtl
+    );
     setContentChunks(chunks);
     onPaginated?.(page.id, chunks.length);
-  }, [page.content, page.id, proseClasses, onPaginated]);
+  }, [page.content, page.id, proseClasses, onPaginated, heightPenalty, isRtl]);
 
   useLayoutEffect(() => {
     runPagination();
   }, [runPagination]);
+
+  // After render, detect any page where content still overflows the safe area
+  // (common with Arabic line-height) and tighten the limit until everything fits.
+  useLayoutEffect(() => {
+    if (!contentChunks?.length) return;
+
+    let maxOverflow = 0;
+    for (const el of chunkRefs.current) {
+      if (!el) continue;
+      maxOverflow = Math.max(maxOverflow, measurePageOverflow(el));
+    }
+
+    if (maxOverflow > 1 && penaltyIterationsRef.current < MAX_PENALTY_ITERATIONS) {
+      penaltyIterationsRef.current += 1;
+      setHeightPenalty((prev) => prev + maxOverflow + 20);
+    }
+  }, [contentChunks]);
 
   useEffect(() => {
     const wrapper = measureRef.current?.parentElement;
     if (!wrapper) return;
 
     const observer = new ResizeObserver(() => {
+      penaltyIterationsRef.current = 0;
+      setHeightPenalty(0);
       runPagination();
     });
     observer.observe(wrapper);
@@ -348,13 +430,16 @@ export function DynamicPage({ page, startPageNumber, totalPages, onPaginated }: 
 
         return (
           <ProposalPageShell
-            key={index}
+            key={`${index}-${heightPenalty}`}
             title={page.title}
             pageNumber={pageNumber}
             totalPages={totalPages}
           >
             <div
-              ref={index === 0 ? measureRef : null}
+              ref={(el) => {
+                chunkRefs.current[index] = el;
+                if (index === 0) measureRef.current = el;
+              }}
               className={`${proseClasses} proposal-page-content`}
               dir={chunkIsArabic ? 'rtl' : undefined}
               style={{ textAlign: chunkIsArabic ? 'right' : undefined }}
